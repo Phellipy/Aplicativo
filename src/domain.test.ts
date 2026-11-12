@@ -1,5 +1,16 @@
 import { describe, it, expect } from "vitest";
 import {
+  createAppointment,
+  getAvailableTimes,
+  initialWorkSchedules,
+  fitsWorkSchedule,
+  appointmentDuration,
+  validateWorkDays,
+  validateRestriction,
+  timelineLayout,
+  filterPeriod,
+  periodDates,
+  workCapacity,
   agendaHours,
   rescheduleAppointment,
   paymentMethods,
@@ -371,7 +382,7 @@ describe("reagendamento", () => {
           time,
           "admin",
         ),
-      ).toThrow("15 minutos");
+      ).toThrow();
     },
   );
   it.each(["2026-02-30", "inválida", ""])(
@@ -413,5 +424,371 @@ describe("reagendamento", () => {
         "professional",
       ),
     ).toThrow("perfil");
+  });
+});
+
+describe("vários procedimentos e disponibilidade", () => {
+  const prof = professionals[0],
+    date = "2026-11-11";
+  const input = {
+    id: 100,
+    client: "Cliente de teste",
+    professional: prof,
+    date,
+    time: "09:00",
+  };
+  it("soma duração, preço e repasses de todos os serviços", () => {
+    const a = createAppointment(
+      input,
+      [1, 2],
+      initialProcedures,
+      [],
+      initialWorkSchedules,
+    );
+    expect(a.services).toHaveLength(2);
+    expect(a.duration).toBe(90);
+    expect(a.value).toBe(245);
+    expect(a.procedure).toBe("Corte + barba + Barba");
+    expect(calculateCommission(a)).toBe(104.5);
+    expect(a.status).toBe("Agendado");
+  });
+  it("fixa duração, preço e percentual mesmo após edição do cadastro", () => {
+    const a = createAppointment(
+      input,
+      [1, 2],
+      initialProcedures,
+      [],
+      initialWorkSchedules,
+    );
+    const changed = initialProcedures.map((p) => ({
+      ...p,
+      duration: 15,
+      price: 1,
+      commission: 1,
+    }));
+    expect(appointmentDuration(a, changed)).toBe(90);
+    expect(a.value).toBe(245);
+    expect(calculateCommission(a)).toBe(104.5);
+  });
+  it("só permite serviços habilitados e não repetidos", () => {
+    expect(() =>
+      createAppointment(
+        input,
+        [3],
+        initialProcedures,
+        [],
+        initialWorkSchedules,
+      ),
+    ).toThrow("habilitados");
+    expect(() =>
+      createAppointment(
+        input,
+        [1, 1],
+        initialProcedures,
+        [],
+        initialWorkSchedules,
+      ),
+    ).toThrow("repetição");
+    expect(() =>
+      createAppointment(input, [], initialProcedures, [], initialWorkSchedules),
+    ).toThrow();
+  });
+  it("exige espaço para a duração inteira dentro da jornada", () => {
+    expect(
+      getAvailableTimes(
+        [],
+        initialProcedures,
+        initialWorkSchedules,
+        prof,
+        date,
+        90,
+      ),
+    ).toContain("16:30");
+    expect(
+      getAvailableTimes(
+        [],
+        initialProcedures,
+        initialWorkSchedules,
+        prof,
+        date,
+        90,
+      ),
+    ).not.toContain("16:45");
+    expect(() =>
+      createAppointment(
+        { ...input, time: "17:00" },
+        [1, 2],
+        initialProcedures,
+        [],
+        initialWorkSchedules,
+      ),
+    ).toThrow("duração total");
+  });
+  it("reserva a duração somada e impede sobreposição", () => {
+    const a = createAppointment(
+      input,
+      [1, 2],
+      initialProcedures,
+      [],
+      initialWorkSchedules,
+    );
+    const slots = getAvailableTimes(
+      [a],
+      initialProcedures,
+      initialWorkSchedules,
+      prof,
+      date,
+      30,
+    );
+    expect(slots).not.toContain("10:15");
+    expect(slots).toContain("10:30");
+  });
+  it("respeita folgas semanais e jornada reduzida de sábado", () => {
+    expect(
+      getAvailableTimes(
+        [],
+        initialProcedures,
+        initialWorkSchedules,
+        prof,
+        "2026-11-15",
+        30,
+      ),
+    ).toEqual([]);
+    const saturday = getAvailableTimes(
+      [],
+      initialProcedures,
+      initialWorkSchedules,
+      prof,
+      "2026-11-14",
+      60,
+    );
+    expect(saturday[0]).toBe("09:00");
+    expect(saturday.at(-1)).toBe("12:00");
+  });
+  it("bloqueia intervalos parciais e permite horários que terminam no início da ausência", () => {
+    const schedules = initialWorkSchedules.map((s) =>
+      s.professional === prof
+        ? {
+            ...s,
+            restrictions: [
+              {
+                id: 1,
+                date,
+                allDay: false,
+                start: "12:00",
+                end: "13:00",
+                reason: "Almoço",
+              },
+            ],
+          }
+        : s,
+    );
+    const slots = getAvailableTimes(
+      [],
+      initialProcedures,
+      schedules,
+      prof,
+      date,
+      60,
+    );
+    expect(slots).toContain("11:00");
+    expect(slots).not.toContain("11:15");
+    expect(slots).not.toContain("12:00");
+    expect(slots).toContain("13:00");
+  });
+  it("bloqueia dia inteiro e somente o profissional da restrição", () => {
+    const schedules = initialWorkSchedules.map((s) =>
+      s.professional === prof
+        ? {
+            ...s,
+            restrictions: [
+              {
+                id: 1,
+                date,
+                allDay: true,
+                start: "00:00",
+                end: "23:59",
+                reason: "Folga",
+              },
+            ],
+          }
+        : s,
+    );
+    expect(
+      getAvailableTimes([], initialProcedures, schedules, prof, date, 30),
+    ).toEqual([]);
+    expect(
+      getAvailableTimes(
+        [],
+        initialProcedures,
+        schedules,
+        professionals[1],
+        date,
+        30,
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(() =>
+      rescheduleAppointment(
+        [initialAppointments[0]],
+        initialProcedures,
+        1,
+        date,
+        "12:00",
+        "admin",
+        schedules,
+      ),
+    ).toThrow("jornada");
+  });
+  it("dias desmarcados também bloqueiam o arraste", () => {
+    const schedules = initialWorkSchedules.map((s) =>
+      s.professional === prof
+        ? { ...s, days: s.days.map((d) => ({ ...d, enabled: false })) }
+        : s,
+    );
+    expect(() =>
+      rescheduleAppointment(
+        [initialAppointments[0]],
+        initialProcedures,
+        1,
+        date,
+        "12:00",
+        "admin",
+        schedules,
+      ),
+    ).toThrow("jornada");
+  });
+  it("admite jornadas fora do antigo limite fixo de 08h–20h", () => {
+    const schedules = initialWorkSchedules.map((s) => ({
+      ...s,
+      days: s.days.map((d) => ({
+        ...d,
+        enabled: true,
+        start: "07:00",
+        end: "22:00",
+      })),
+    }));
+    expect(
+      getAvailableTimes([], initialProcedures, schedules, prof, date, 60),
+    ).toContain("21:00");
+    expect(
+      rescheduleAppointment(
+        [initialAppointments[0]],
+        initialProcedures,
+        1,
+        date,
+        "07:00",
+        "admin",
+        schedules,
+      )[0].time,
+    ).toBe("07:00");
+  });
+  it("detecta agendamento existente que ficou fora da jornada", () =>
+    expect(fitsWorkSchedule(initialWorkSchedules[0], date, "17:30", 90)).toBe(
+      false,
+    ));
+  it("valida horários de trabalho e ausências invertidas", () => {
+    expect(() =>
+      validateWorkDays(
+        initialWorkSchedules[0].days.map((d) => ({
+          ...d,
+          start: "18:00",
+          end: "09:00",
+        })),
+      ),
+    ).toThrow();
+    expect(() =>
+      validateRestriction({
+        id: 1,
+        date,
+        allDay: false,
+        start: "13:00",
+        end: "12:00",
+        reason: "",
+      }),
+    ).toThrow();
+  });
+  it("ausências e cancelamentos não ocupam horários para novos atendimentos", () => {
+    const slots = getAvailableTimes(
+      initialAppointments.map((a) => ({ ...a, status: "Não compareceu" })),
+      initialProcedures,
+      initialWorkSchedules,
+      prof,
+      date,
+      60,
+    );
+    expect(slots).toContain("09:00");
+  });
+});
+describe("pilha com duração proporcional", () => {
+  it("posiciona por início e término usando a soma de serviços", () => {
+    const appointment = createAppointment(
+      {
+        id: 100,
+        client: "Teste",
+        professional: professionals[0],
+        date: "2026-11-11",
+        time: "09:15",
+      },
+      [1, 2],
+      initialProcedures,
+      [],
+      initialWorkSchedules,
+    );
+    const [event] = timelineLayout([appointment], initialProcedures);
+    expect(event.start).toBe(555);
+    expect(event.end).toBe(645);
+    expect(event.end - event.start).toBe(90);
+  });
+  it("divide a largura dos conflitos sem deslocar o horário de início", () => {
+    const base = initialAppointments[0];
+    const placed = timelineLayout(
+      [
+        base,
+        { ...base, id: 20, time: "09:30" },
+        { ...base, id: 21, time: "11:00" },
+      ],
+      initialProcedures,
+    );
+    expect(placed[0].columns).toBe(2);
+    expect(placed[1].column).toBe(1);
+    expect(placed[1].start).toBe(570);
+    expect(placed[2].columns).toBe(1);
+  });
+});
+describe("períodos hoje, mês e ano", () => {
+  const base = initialAppointments[0];
+  const items = [
+    { ...base, id: 1, date: "2026-11-11" },
+    { ...base, id: 2, date: "2026-11-30" },
+    { ...base, id: 3, date: "2026-12-01" },
+    { ...base, id: 4, date: "2027-01-01" },
+  ];
+  it("separa os limites do dia, mês e ano", () => {
+    expect(filterPeriod(items, "day", "2026-11-11")).toHaveLength(1);
+    expect(filterPeriod(items, "month", "2026-11-11")).toHaveLength(2);
+    expect(filterPeriod(items, "year", "2026-11-11")).toHaveLength(3);
+  });
+  it("conta corretamente meses e anos bissextos", () => {
+    expect(periodDates("month", "2024-02-01")).toHaveLength(29);
+    expect(periodDates("year", "2024-01-01")).toHaveLength(366);
+    expect(periodDates("year", "2026-01-01")).toHaveLength(365);
+  });
+  it("calcula a ocupação pela jornada cadastrada do período", () => {
+    expect(
+      workCapacity(
+        initialWorkSchedules,
+        [professionals[0]],
+        "day",
+        "2026-11-11",
+      ),
+    ).toBe(540);
+    expect(
+      workCapacity(
+        initialWorkSchedules,
+        [professionals[0]],
+        "day",
+        "2026-11-15",
+      ),
+    ).toBe(0);
   });
 });

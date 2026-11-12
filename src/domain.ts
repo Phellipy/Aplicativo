@@ -17,6 +17,34 @@ export type Appointment = {
   commissionRate: number;
   status: string;
   paymentMethod?: PaymentMethod;
+  services?: AppointmentService[];
+  duration?: number;
+};
+export type AppointmentService = {
+  procedureId: number;
+  name: string;
+  duration: number;
+  price: number;
+  commissionRate: number;
+};
+export type WorkDay = {
+  day: number;
+  enabled: boolean;
+  start: string;
+  end: string;
+};
+export type Restriction = {
+  id: number;
+  date: string;
+  allDay: boolean;
+  start: string;
+  end: string;
+  reason: string;
+};
+export type WorkSchedule = {
+  professional: string;
+  days: WorkDay[];
+  restrictions: Restriction[];
 };
 export type Client = {
   id: number;
@@ -190,7 +218,12 @@ export const money = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export const calculateCommission = (a: Appointment) =>
-  (a.value * a.commissionRate) / 100;
+  a.services?.length
+    ? a.services.reduce(
+        (sum, service) => sum + (service.price * service.commissionRate) / 100,
+        0,
+      )
+    : (a.value * a.commissionRate) / 100;
 
 export const procedureRate = (procedure: Procedure, professional: string) =>
   procedure.individualRates?.[professional] ?? procedure.commission;
@@ -209,10 +242,8 @@ export function hasConflict(
     (a) =>
       a.professional === professional &&
       a.date === date &&
-      a.status !== "Cancelado" &&
-      start <
-        minutes(a.time) +
-          (procedures.find((p) => p.name === a.procedure)?.duration ?? 60) &&
+      !["Cancelado", "Não compareceu"].includes(a.status) &&
+      start < minutes(a.time) + appointmentDuration(a, procedures) &&
       start + duration > minutes(a.time),
   );
 }
@@ -254,8 +285,13 @@ export const normalizeAppointments = (
         : appointment,
   );
 
-export function agendaHours(appointments: Appointment[]) {
-  const hours = appointments.map((a) => Number(a.time.slice(0, 2)));
+export function agendaHours(
+  appointments: Appointment[],
+  extraTimes: string[] = [],
+) {
+  const hours = [...appointments.map((a) => a.time), ...extraTimes].map(
+    (time) => Number(time.slice(0, 2)),
+  );
   const first = Math.min(8, ...hours);
   const last = Math.max(20, ...hours);
   return Array.from({ length: last - first + 1 }, (_, index) => {
@@ -291,6 +327,7 @@ export function rescheduleAppointment(
   date: string,
   time: string,
   role: Role,
+  schedules: WorkSchedule[] = initialWorkSchedules,
 ): Appointment[] {
   const appointment = appointments.find((item) => item.id === id);
   if (
@@ -307,12 +344,9 @@ export function rescheduleAppointment(
     Number.isFinite(Date.parse(date)) &&
     new Date(date).toISOString().slice(0, 10) === date;
   if (!validDate) throw new Error("Escolha uma data válida.");
-  if (!/^(?:0[8-9]|1\d|20):(?:00|15|30|45)$/.test(time) || time > "20:00")
-    throw new Error(
-      "Escolha um horário entre 08:00 e 20:00, em intervalos de 15 minutos.",
-    );
-  const duration =
-    procedures.find((p) => p.name === appointment.procedure)?.duration ?? 60;
+  if (!/^(?:[01]\d|2[0-3]):(?:00|15|30|45)$/.test(time))
+    throw new Error("Escolha um horário válido, em intervalos de 15 minutos.");
+  const duration = appointmentDuration(appointment, procedures);
   if (
     hasConflict(
       appointments.filter((item) => item.id !== id),
@@ -326,7 +360,318 @@ export function rescheduleAppointment(
     throw new Error(
       "Há um conflito na agenda deste profissional. O horário original foi mantido.",
     );
+  if (
+    !getAvailableTimes(
+      appointments,
+      procedures,
+      schedules,
+      appointment.professional,
+      date,
+      duration,
+      id,
+    ).includes(time)
+  )
+    throw new Error(
+      "Horário indisponível na jornada do profissional ou bloqueado por uma ausência. O horário original foi mantido.",
+    );
   return appointments.map((item) =>
     item.id === id ? { ...item, date, time } : item,
+  );
+}
+
+export const weekdayLabels = [
+  "Domingo",
+  "Segunda",
+  "Terça",
+  "Quarta",
+  "Quinta",
+  "Sexta",
+  "Sábado",
+];
+export const initialWorkSchedules: WorkSchedule[] = professionals.map(
+  (professional) => ({
+    professional,
+    days: weekdayLabels.map((_, day) => ({
+      day,
+      enabled: day !== 0,
+      start: "09:00",
+      end: day === 6 ? "13:00" : "18:00",
+    })),
+    restrictions: [],
+  }),
+);
+export const timeMinutes = (time: string) =>
+  Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+export const minuteTime = (minutes: number) =>
+  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+export const validDate = (date: string) =>
+  /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+  Number.isFinite(Date.parse(date)) &&
+  new Date(date).toISOString().slice(0, 10) === date;
+export const validTime = (time: string) =>
+  /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(time);
+export const appointmentDuration = (
+  appointment: Appointment,
+  procedures: Procedure[],
+) =>
+  appointment.services?.length
+    ? appointment.services.reduce((sum, service) => sum + service.duration, 0)
+    : (appointment.duration ??
+      procedures.find((p) => p.name === appointment.procedure)?.duration ??
+      60);
+export function fitsWorkSchedule(
+  schedule: WorkSchedule | undefined,
+  date: string,
+  time: string,
+  duration: number,
+) {
+  if (!schedule || !validDate(date) || !validTime(time) || duration <= 0)
+    return false;
+  const day = schedule.days.find(
+    (d) => d.day === new Date(`${date}T12:00:00Z`).getUTCDay(),
+  );
+  if (!day?.enabled || !validTime(day.start) || !validTime(day.end))
+    return false;
+  const start = timeMinutes(time),
+    end = start + duration;
+  if (start < timeMinutes(day.start) || end > timeMinutes(day.end))
+    return false;
+  return !schedule.restrictions.some(
+    (block) =>
+      block.date === date &&
+      (block.allDay ||
+        (start < timeMinutes(block.end) && end > timeMinutes(block.start))),
+  );
+}
+export function getAvailableTimes(
+  appointments: Appointment[],
+  procedures: Procedure[],
+  schedules: WorkSchedule[],
+  professional: string,
+  date: string,
+  duration: number,
+  excludeId?: number,
+) {
+  const schedule = schedules.find((s) => s.professional === professional);
+  if (
+    !schedule ||
+    !validDate(date) ||
+    !Number.isFinite(duration) ||
+    duration <= 0
+  )
+    return [];
+  const day = schedule.days.find(
+    (d) => d.day === new Date(`${date}T12:00:00Z`).getUTCDay(),
+  );
+  if (!day?.enabled || !validTime(day.start) || !validTime(day.end)) return [];
+  const slots: string[] = [];
+  for (
+    let start = Math.ceil(timeMinutes(day.start) / 15) * 15;
+    start + duration <= timeMinutes(day.end);
+    start += 15
+  ) {
+    const time = minuteTime(start);
+    if (
+      fitsWorkSchedule(schedule, date, time, duration) &&
+      !hasConflict(
+        appointments.filter((a) => a.id !== excludeId),
+        procedures,
+        professional,
+        date,
+        time,
+        duration,
+      )
+    )
+      slots.push(time);
+  }
+  return slots;
+}
+export function createAppointment(
+  input: Pick<Appointment, "id" | "client" | "professional" | "date" | "time">,
+  ids: number[],
+  procedures: Procedure[],
+  appointments: Appointment[],
+  schedules: WorkSchedule[],
+): Appointment {
+  if (!ids.length || new Set(ids).size !== ids.length)
+    throw new Error("Selecione um ou mais procedimentos sem repetição.");
+  const selected = ids.map((id) => procedures.find((p) => p.id === id));
+  if (selected.some((p) => !p || !p.professionals.includes(input.professional)))
+    throw new Error(
+      "Selecione apenas procedimentos habilitados para este profissional.",
+    );
+  const services: AppointmentService[] = selected.map((p) => ({
+    procedureId: p!.id,
+    name: p!.name,
+    duration: p!.duration,
+    price: p!.price,
+    commissionRate: procedureRate(p!, input.professional),
+  }));
+  const duration = services.reduce((sum, s) => sum + s.duration, 0),
+    value = services.reduce((sum, s) => sum + s.price, 0);
+  if (
+    !getAvailableTimes(
+      appointments,
+      procedures,
+      schedules,
+      input.professional,
+      input.date,
+      duration,
+    ).includes(input.time)
+  )
+    throw new Error(
+      "Este horário não está disponível para a duração total dos procedimentos. Escolha outro horário.",
+    );
+  return {
+    ...input,
+    services,
+    duration,
+    value,
+    commissionRate: value
+      ? services.reduce((sum, s) => sum + s.price * s.commissionRate, 0) / value
+      : 0,
+    procedure: services.map((s) => s.name).join(" + "),
+    status: "Agendado",
+  };
+}
+export function validateWorkDays(days: WorkDay[]) {
+  if (
+    days.length !== 7 ||
+    new Set(days.map((d) => d.day)).size !== 7 ||
+    days.some((d) => d.day < 0 || d.day > 6)
+  )
+    throw new Error("Configure os sete dias da semana.");
+  if (
+    days.some(
+      (d) =>
+        d.enabled &&
+        (!validTime(d.start) ||
+          !validTime(d.end) ||
+          timeMinutes(d.start) >= timeMinutes(d.end)),
+    )
+  )
+    throw new Error(
+      "O fim da jornada deve ser depois do início em cada dia ativo.",
+    );
+}
+export function validateRestriction(block: Restriction) {
+  if (!validDate(block.date))
+    throw new Error("Escolha uma data válida para a ausência.");
+  if (
+    !block.allDay &&
+    (!validTime(block.start) ||
+      !validTime(block.end) ||
+      timeMinutes(block.start) >= timeMinutes(block.end))
+  )
+    throw new Error("O fim da ausência deve ser depois do início.");
+}
+
+export function timelineLayout(
+  appointments: Appointment[],
+  procedures: Procedure[],
+) {
+  type Placed = {
+    appointment: Appointment;
+    start: number;
+    end: number;
+    column: number;
+    columns: number;
+  };
+  const placed: Placed[] = [];
+  for (const professional of new Set(appointments.map((a) => a.professional))) {
+    const sorted = appointments
+      .filter((a) => a.professional === professional)
+      .map((appointment) => ({
+        appointment,
+        start: timeMinutes(appointment.time),
+        end:
+          timeMinutes(appointment.time) +
+          appointmentDuration(appointment, procedures),
+      }))
+      .sort((a, b) => a.start - b.start || a.appointment.id - b.appointment.id);
+    let group: Placed[] = [],
+      ends: number[] = [],
+      groupEnd = -1;
+    const finish = () => {
+      for (const item of group) item.columns = ends.length;
+      placed.push(...group);
+      group = [];
+      ends = [];
+      groupEnd = -1;
+    };
+    for (const item of sorted) {
+      if (group.length && item.start >= groupEnd) finish();
+      let column = ends.findIndex((end) => end <= item.start);
+      if (column < 0) column = ends.length;
+      ends[column] = item.end;
+      group.push({ ...item, column, columns: 1 });
+      groupEnd = Math.max(groupEnd, item.end);
+    }
+    finish();
+  }
+  return placed;
+}
+
+export type Period = "day" | "month" | "year";
+export function filterPeriod(
+  appointments: Appointment[],
+  period: Period,
+  date: string,
+) {
+  if (!validDate(date)) return [];
+  const length = period === "day" ? 10 : period === "month" ? 7 : 4;
+  return appointments.filter(
+    (a) => a.date.slice(0, length) === date.slice(0, length),
+  );
+}
+export function periodDates(period: Period, date: string) {
+  if (!validDate(date)) return [];
+  const year = Number(date.slice(0, 4)),
+    month = Number(date.slice(5, 7)) - 1;
+  const start =
+    period === "day"
+      ? Date.parse(date)
+      : period === "month"
+        ? Date.UTC(year, month, 1)
+        : Date.UTC(year, 0, 1);
+  const end =
+    period === "day"
+      ? start + 86400000
+      : period === "month"
+        ? Date.UTC(year, month + 1, 1)
+        : Date.UTC(year + 1, 0, 1);
+  const dates: string[] = [];
+  for (let timestamp = start; timestamp < end; timestamp += 86400000)
+    dates.push(new Date(timestamp).toISOString().slice(0, 10));
+  return dates;
+}
+export const periodLabel = (period: Period, date: string) =>
+  !validDate(date)
+    ? "Período inválido"
+    : period === "day"
+      ? date.split("-").reverse().join("/")
+      : period === "month"
+        ? new Intl.DateTimeFormat("pt-BR", {
+            month: "long",
+            year: "numeric",
+            timeZone: "UTC",
+          }).format(new Date(`${date}T12:00:00Z`))
+        : date.slice(0, 4);
+export function workCapacity(
+  schedules: WorkSchedule[],
+  names: string[],
+  period: Period,
+  date: string,
+) {
+  return periodDates(period, date).reduce(
+    (sum, day) =>
+      sum +
+      names.reduce(
+        (minutes, name) =>
+          minutes +
+          getAvailableTimes([], [], schedules, name, day, 15).length * 15,
+        0,
+      ),
+    0,
   );
 }

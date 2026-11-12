@@ -1,5 +1,9 @@
 import AgendaStack from "./AgendaStack";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import PeriodControls from "./PeriodControls";
+import AgendaPeriod from "./AgendaPeriod";
+import AppointmentFields, { RescheduleFields } from "./AppointmentFields";
+import WorkScheduleEditor from "./WorkScheduleEditor";
+import { useEffect, useRef, useState, useMemo, type FormEvent } from "react";
 import {
   LayoutDashboard,
   CalendarDays,
@@ -26,6 +30,16 @@ import {
   CircleAlert,
 } from "lucide-react";
 import {
+  filterPeriod,
+  periodLabel,
+  workCapacity,
+  type Period,
+  initialWorkSchedules,
+  createAppointment,
+  getAvailableTimes,
+  appointmentDuration,
+  fitsWorkSchedule,
+  type WorkSchedule,
   rescheduleAppointment,
   canReschedule,
   agendaStatusTone,
@@ -40,7 +54,6 @@ import {
   TODAY,
   money,
   procedureRate,
-  hasConflict,
   calculateCommission,
   visibleAppointments,
   eligibleClients,
@@ -127,6 +140,10 @@ export default function App() {
       "navalha-v01-campaigns",
       [],
     );
+  const [schedules, setSchedules] = useStored<WorkSchedule[]>(
+    "navalha-v01-work-schedules",
+    initialWorkSchedules,
+  );
   const [query, setQuery] = useState(""),
     [date, setDate] = useState(TODAY),
     [person, setPerson] = useState("Todos"),
@@ -139,6 +156,9 @@ export default function App() {
     "navalha-v01-agenda-view",
     "list",
   );
+  const [dashboardPeriod, setDashboardPeriod] = useState<Period>("day"),
+    [dashboardDate, setDashboardDate] = useState(TODAY);
+  const [agendaPeriod, setAgendaPeriod] = useState<Period>("day");
   const [expandedAppointment, setExpandedAppointment] = useState<number | null>(
     null,
   );
@@ -173,15 +193,36 @@ export default function App() {
   }, [toast]);
   const admin = role === "admin",
     allowed = pages.filter(
-      (p) =>
-        admin ||
-        !["Clientes", "Profissionais", "Configurações"].includes(p.name),
+      (p) => admin || !["Clientes", "Profissionais"].includes(p.name),
     );
   const visible = visibleAppointments(appointments, role || "professional");
   const scoped = visible.filter(
       (a) => person === "Todos" || a.professional === person,
     ),
-    today = scoped.filter((a) => a.date === TODAY && a.status !== "Cancelado");
+    today = filterPeriod(
+      scoped,
+      page === "Dashboard" ? dashboardPeriod : "day",
+      page === "Dashboard" ? dashboardDate : TODAY,
+    ).filter((a) => !["Cancelado", "Não compareceu"].includes(a.status));
+  const reportLabel = periodLabel(
+    page === "Dashboard" ? dashboardPeriod : "day",
+    page === "Dashboard" ? dashboardDate : TODAY,
+  );
+  const agendaItems = filterPeriod(scoped, agendaPeriod, date);
+  const capacity = useMemo(
+    () =>
+      workCapacity(
+        schedules,
+        admin
+          ? person === "Todos"
+            ? professionals
+            : [person]
+          : [professionals[0]],
+        dashboardPeriod,
+        dashboardDate,
+      ),
+    [schedules, admin, person, dashboardPeriod, dashboardDate],
+  );
   const completed = today.filter((a) => a.status === "Concluído"),
     revenue = receivedTotal(completed);
   const paidPayout = completed
@@ -216,9 +257,11 @@ export default function App() {
         newDate,
         newTime,
         role,
+        schedules,
       );
       setAppointments(updated);
       setDate(newDate);
+      setAgendaPeriod("day");
       setExpandedAppointment(null);
       setToast(
         `Horário de ${appointment.client} alterado de ${appointment.time} para ${newTime} em ${newDate.split("-").reverse().join("/")}.`,
@@ -268,40 +311,25 @@ export default function App() {
       ]);
     }
     if (modal === "appointment") {
-      const proc = procedures.find((p) => p.id === Number(f.get("procedure")));
-      const prof = admin ? str("professional") : professionals[0];
-      if (!proc || !proc.professionals.includes(prof)) {
-        setFormError(
-          "Este profissional não está habilitado para o procedimento.",
+      try {
+        const created = createAppointment(
+          {
+            id: Date.now(),
+            client: str("client"),
+            professional: admin ? str("professional") : professionals[0],
+            date: str("date"),
+            time: str("time"),
+          },
+          f.getAll("procedureIds").map(Number),
+          procedures,
+          appointments,
+          schedules,
         );
+        setAppointments([...appointments, created]);
+      } catch (error) {
+        setFormError((error as Error).message);
         return;
       }
-      const conflict = hasConflict(
-        appointments,
-        procedures,
-        prof,
-        str("date"),
-        str("time"),
-        proc.duration,
-      );
-      if (conflict) {
-        setFormError("Há um conflito de horário para este profissional.");
-        return;
-      }
-      setAppointments([
-        ...appointments,
-        {
-          id: Date.now(),
-          client: str("client"),
-          professional: prof,
-          procedure: proc.name,
-          date: str("date"),
-          time: str("time"),
-          value: proc.price,
-          commissionRate: procedureRate(proc, prof),
-          status: "Agendado",
-        },
-      ]);
     }
     close();
     setToast("Cadastro salvo neste navegador.");
@@ -691,10 +719,13 @@ export default function App() {
           {page === "Dashboard" && (
             <>
               <div className="filter-row">
-                <div className="segmented">
-                  <span className="selected">Hoje</span>
-                  <span>11 nov 2026</span>
-                </div>
+                <PeriodControls
+                  label="do início"
+                  period={dashboardPeriod}
+                  date={dashboardDate}
+                  onPeriod={setDashboardPeriod}
+                  onDate={setDashboardDate}
+                />
                 {admin && (
                   <select
                     aria-label="Filtrar resultados por profissional"
@@ -711,7 +742,9 @@ export default function App() {
               <div className="stats">
                 {[
                   {
-                    label: admin ? "Recebido hoje" : "Meus ganhos hoje",
+                    label: admin
+                      ? "Recebido no período"
+                      : "Meus ganhos no período",
                     value: money(admin ? revenue : payout),
                     note: "Concluídos com pagamento registrado",
                     icon: Wallet,
@@ -719,7 +752,7 @@ export default function App() {
                   {
                     label: "Atendimentos",
                     value: String(today.length).padStart(2, "0"),
-                    note: `${completed.length} concluído(s) no dia`,
+                    note: `${completed.length} concluído(s) no período`,
                     icon: CalendarDays,
                   },
                   {
@@ -727,13 +760,15 @@ export default function App() {
                       ? "Repasses previstos"
                       : "Meus ganhos previstos",
                     value: money(today.reduce((s, a) => s + commission(a), 0)),
-                    note: "Sobre a agenda de hoje",
+                    note: "Sobre a agenda do período",
                     icon: UserRound,
                   },
                   {
                     label: "Ocupação prevista",
-                    value: `${Math.round((today.reduce((s, a) => s + (procedures.find((p) => p.name === a.procedure)?.duration || 60), 0) / ((admin && person === "Todos" ? 3 : 1) * 480)) * 100)}%`,
-                    note: "Base: jornada demo de 8h",
+                    value: capacity
+                      ? `${((today.reduce((sum, a) => sum + appointmentDuration(a, procedures), 0) / capacity) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
+                      : "—",
+                    note: "Base: jornada e bloqueios cadastrados",
                     icon: Clock,
                   },
                 ].map((s, i) => (
@@ -754,20 +789,28 @@ export default function App() {
                   <div className="panel-head">
                     <div>
                       <h2>
-                        Agendamentos de hoje{" "}
+                        Agendamentos do período{" "}
                         <span className="sub-count">{today.length}</span>
                       </h2>
-                      <p>Seu dia, organizado do começo ao fim.</p>
+                      <p>{reportLabel}</p>
                     </div>
                     <button
                       className="text-button"
-                      onClick={() => navigate("Agenda")}
+                      onClick={() => {
+                        navigate("Agenda");
+                        setDate(dashboardDate);
+                        setAgendaPeriod(dashboardPeriod);
+                      }}
                     >
                       Ver agenda <ArrowUpRight size={16} />
                     </button>
                   </div>
                   {appointmentRows(
-                    today.sort((a, b) => a.time.localeCompare(b.time)),
+                    today.sort(
+                      (a, b) =>
+                        a.date.localeCompare(b.date) ||
+                        a.time.localeCompare(b.time),
+                    ),
                   )}
                 </section>
                 <section className="panel alerts">
@@ -808,7 +851,11 @@ export default function App() {
                       </p>
                       <button
                         className="secondary"
-                        onClick={() => navigate("Agenda")}
+                        onClick={() => {
+                          navigate("Agenda");
+                          setDate(dashboardDate);
+                          setAgendaPeriod(dashboardPeriod);
+                        }}
                       >
                         Ver minha agenda
                       </button>
@@ -823,9 +870,9 @@ export default function App() {
                           ? "Agenda por profissional"
                           : "Minha agenda em números"}
                       </h2>
-                      <p>Previsão de atendimentos para hoje</p>
+                      <p>Previsão de atendimentos · {reportLabel}</p>
                     </div>
-                    <span className="badge blue">Hoje</span>
+                    <span className="badge blue">{reportLabel}</span>
                   </div>
                   <div className="team-list">
                     {(admin ? professionals : [professionals[0]]).map(
@@ -856,7 +903,7 @@ export default function App() {
                 </section>
                 <section className="panel day-summary">
                   <div className="panel-head">
-                    <h2>Resumo do dia</h2>
+                    <h2>Resumo do período</h2>
                     <Wallet size={19} />
                   </div>
                   <div>
@@ -893,17 +940,19 @@ export default function App() {
           {page === "Agenda" && (
             <>
               <section className="toolbar">
-                <label>
-                  Data
-                  <input
-                    type="date"
-                    value={date}
-                    onChange={(e) => {
-                      setDate(e.target.value);
-                      setExpandedAppointment(null);
-                    }}
-                  />
-                </label>
+                <PeriodControls
+                  label="da agenda"
+                  period={agendaPeriod}
+                  date={date}
+                  onPeriod={(value) => {
+                    setAgendaPeriod(value);
+                    setExpandedAppointment(null);
+                  }}
+                  onDate={(value) => {
+                    setDate(value);
+                    setExpandedAppointment(null);
+                  }}
+                />
                 {admin && (
                   <label>
                     Profissional
@@ -918,9 +967,6 @@ export default function App() {
                     </select>
                   </label>
                 )}
-                <button className="secondary" onClick={() => setDate(TODAY)}>
-                  Hoje (demo)
-                </button>
                 <div
                   className="agenda-view-switch"
                   role="group"
@@ -946,10 +992,22 @@ export default function App() {
                     {admin ? "Agenda do estabelecimento" : "Minha agenda"}
                   </h2>
                   <span className="badge blue">
-                    {scoped.filter((a) => a.date === date).length} atendimentos
+                    {agendaItems.length} atendimentos ·{" "}
+                    {periodLabel(agendaPeriod, date)}
                   </span>
                 </div>
-                {agendaView === "stack" ? (
+                {agendaView === "stack" && agendaPeriod !== "day" ? (
+                  <AgendaPeriod
+                    appointments={scoped}
+                    period={agendaPeriod}
+                    date={date}
+                    onOpen={(value, period) => {
+                      setDate(value);
+                      setAgendaPeriod(period);
+                      setExpandedAppointment(null);
+                    }}
+                  />
+                ) : agendaView === "stack" ? (
                   <>
                     <div
                       className="agenda-legend"
@@ -977,6 +1035,17 @@ export default function App() {
                     </p>
                     <AgendaStack
                       appointments={scoped.filter((a) => a.date === date)}
+                      allAppointments={appointments}
+                      procedures={procedures}
+                      schedules={schedules}
+                      date={date}
+                      laneNames={
+                        admin
+                          ? person === "Todos"
+                            ? professionals
+                            : [person]
+                          : [professionals[0]]
+                      }
                       admin={admin}
                       expanded={expandedAppointment}
                       onExpand={setExpandedAppointment}
@@ -991,9 +1060,11 @@ export default function App() {
                   </>
                 ) : (
                   appointmentRows(
-                    scoped
-                      .filter((a) => a.date === date)
-                      .sort((a, b) => a.time.localeCompare(b.time)),
+                    [...agendaItems].sort(
+                      (a, b) =>
+                        a.date.localeCompare(b.date) ||
+                        a.time.localeCompare(b.time),
+                    ),
                     true,
                   )
                 )}
@@ -1174,7 +1245,22 @@ export default function App() {
                   <Avatar name={p} />
                   <h2>{p}</h2>
                   <Badge text="Ativo" />
-                  <p>Profissional · Jornada demo: 09h às 18h</p>
+                  <p>Profissional · Jornada configurável</p>
+                  <details className="schedule-details">
+                    <summary>Jornada e ausências</summary>
+                    <WorkScheduleEditor
+                      schedule={schedules.find((s) => s.professional === p)!}
+                      onSave={(updated) =>
+                        setSchedules((items) =>
+                          items.map((s) =>
+                            s.professional === p ? updated : s,
+                          ),
+                        )
+                      }
+                      appointments={appointments}
+                      procedures={procedures}
+                    />
+                  </details>
                   <div className="divider" />
                   <h3>Procedimentos habilitados</h3>
                   {procedures
@@ -1327,6 +1413,28 @@ export default function App() {
               </div>
             </>
           )}
+          {page === "Configurações" && !admin && (
+            <section className="panel settings">
+              <h2>Minha jornada e ausências</h2>
+              <p>Configure somente a sua disponibilidade demonstrativa.</p>
+              <WorkScheduleEditor
+                schedule={schedules.find(
+                  (s) => s.professional === professionals[0],
+                )!}
+                onSave={(updated) =>
+                  setSchedules((items) =>
+                    items.map((s) =>
+                      s.professional === professionals[0]
+                        ? { ...updated, professional: professionals[0] }
+                        : s,
+                    ),
+                  )
+                }
+                appointments={visible}
+                procedures={procedures}
+              />
+            </section>
+          )}
           {page === "Configurações" && admin && (
             <div className="settings-grid">
               <section className="panel settings">
@@ -1459,29 +1567,12 @@ export default function App() {
                 {formError}
               </div>
             )}
-            <div className="form-row">
-              <label>
-                Nova data
-                <input
-                  name="rescheduleDate"
-                  type="date"
-                  defaultValue={rescheduleTarget.date}
-                  required
-                />
-              </label>
-              <label>
-                Novo horário
-                <input
-                  name="rescheduleTime"
-                  type="time"
-                  defaultValue={rescheduleTarget.time}
-                  step="900"
-                  min="08:00"
-                  max="20:00"
-                  required
-                />
-              </label>
-            </div>
+            <RescheduleFields
+              appointment={rescheduleTarget}
+              appointments={appointments}
+              procedures={procedures}
+              schedules={schedules}
+            />
             <small>
               Intervalos de 15 minutos. O profissional, o procedimento, o valor,
               o status e o pagamento são mantidos. Conflitos bloqueiam a
@@ -1604,71 +1695,20 @@ export default function App() {
               </div>
             )}
             {modal === "appointment" ? (
-              <>
-                <label>
-                  Cliente
-                  <select name="client" required>
-                    {(admin
-                      ? clients
-                      : clients.filter((c) =>
-                          visible.some((a) => a.client === c.name),
-                        )
-                    ).map((c) => (
-                      <option key={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </label>
-                {admin && (
-                  <label>
-                    Profissional
-                    <select name="professional">
-                      {professionals.map((p) => (
-                        <option key={p}>{p}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <label>
-                  Procedimento
-                  <select name="procedure" required>
-                    {procedures
-                      .filter(
-                        (p) =>
-                          admin || p.professionals.includes(professionals[0]),
+              <AppointmentFields
+                appointments={appointments}
+                procedures={procedures}
+                schedules={schedules}
+                clients={
+                  admin
+                    ? clients
+                    : clients.filter((c) =>
+                        visible.some((a) => a.client === c.name),
                       )
-                      .map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} · {money(p.price)}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <div className="form-row">
-                  <label>
-                    Data
-                    <input
-                      type="date"
-                      name="date"
-                      defaultValue={date}
-                      required
-                    />
-                  </label>
-                  <label>
-                    Horário
-                    <input
-                      type="time"
-                      name="time"
-                      required
-                      min="08:00"
-                      max="20:00"
-                      step="900"
-                    />
-                  </label>
-                </div>
-                <small>
-                  Habilitação e conflito de horários são verificados ao salvar.
-                </small>
-              </>
+                }
+                admin={admin}
+                initialDate={date}
+              />
             ) : modal === "client" ? (
               <>
                 <label>

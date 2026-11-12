@@ -7,7 +7,14 @@ import {
 } from "react";
 import { GripVertical, CalendarClock } from "lucide-react";
 import {
-  agendaHours,
+  appointmentDuration,
+  getAvailableTimes,
+  timelineLayout,
+  timeMinutes,
+  minuteTime,
+  fitsWorkSchedule,
+  type Procedure,
+  type WorkSchedule,
   agendaStatusTone,
   canReschedule,
   money,
@@ -16,6 +23,11 @@ import {
 
 type Props = {
   appointments: Appointment[];
+  allAppointments: Appointment[];
+  procedures: Procedure[];
+  schedules: WorkSchedule[];
+  date: string;
+  laneNames: string[];
   admin: boolean;
   expanded: number | null;
   onExpand: (id: number | null) => void;
@@ -31,6 +43,11 @@ type Drag = {
 };
 export default function AgendaStack({
   appointments,
+  allAppointments,
+  procedures,
+  schedules,
+  date,
+  laneNames,
   admin,
   expanded,
   onExpand,
@@ -48,6 +65,15 @@ export default function AgendaStack({
     timer: ReturnType<typeof setTimeout> | null;
   } | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const scrollArea = useRef<HTMLDivElement>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (expanded !== null)
+      detailsRef.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "smooth",
+      });
+  }, [expanded]);
   const reset = () => {
     if (pending.current?.timer) clearTimeout(pending.current.timer);
     pending.current = null;
@@ -77,7 +103,17 @@ export default function AgendaStack({
       if (current) {
         const viewport = window.innerHeight;
         const speed = current.y < 80 ? -10 : current.y > viewport - 80 ? 10 : 0;
-        if (speed) window.scrollBy(0, speed);
+        const area = scrollArea.current;
+        const bounds = area?.getBoundingClientRect();
+        const areaSpeed = bounds
+          ? current.y < bounds.top + 50
+            ? -8
+            : current.y > bounds.bottom - 50
+              ? 8
+              : 0
+          : 0;
+        if (area && areaSpeed) area.scrollBy(0, areaSpeed);
+        else if (speed) window.scrollBy(0, speed);
         const element = document
           .elementFromPoint(current.x, current.y)
           ?.closest<HTMLElement>("[data-drop-time]");
@@ -163,110 +199,218 @@ export default function AgendaStack({
       event.currentTarget.releasePointerCapture(event.pointerId);
     if (current && target && moved) onMove(current.appointment, target);
   }
+
+  const layout = timelineLayout(appointments, procedures);
+  const workTimes = schedules
+    .filter((s) => laneNames.includes(s.professional))
+    .flatMap((s) =>
+      s.days
+        .filter(
+          (d) =>
+            d.enabled && d.day === new Date(`${date}T12:00:00Z`).getUTCDay(),
+        )
+        .flatMap((d) => [timeMinutes(d.start), timeMinutes(d.end)]),
+    );
+  const first =
+    Math.floor(
+      Math.min(480, ...workTimes, ...layout.map((p) => p.start)) / 60,
+    ) * 60;
+  const last =
+    Math.ceil(Math.max(1200, ...workTimes, ...layout.map((p) => p.end)) / 60) *
+    60;
+  const scale = 2;
+  const height = (last - first) * scale;
+  const selected = appointments.find((a) => a.id === expanded);
+  const available = drag
+    ? getAvailableTimes(
+        allAppointments,
+        procedures,
+        schedules,
+        drag.appointment.professional,
+        date,
+        appointmentDuration(drag.appointment, procedures),
+        drag.appointment.id,
+      )
+    : [];
+  const ticks = Array.from(
+    { length: (last - first) / 15 },
+    (_, index) => first + index * 15,
+  );
+  const laneStyle = {
+    gridTemplateColumns: `52px repeat(${laneNames.length},minmax(220px,1fr))`,
+    minWidth: 52 + 220 * laneNames.length,
+  };
   return (
     <div className={`agenda-stack ${drag ? "is-dragging" : ""}`} ref={root}>
       <p className="drag-instructions">
-        Arraste pela alça ⋮⋮. No celular, segure a alça por um instante. Ou use
-        Reagendar. Encaixe a cada 15 minutos.
+        A altura representa a duração total. Arraste pela alça ⋮⋮ (segure no
+        celular), ou selecione a caixa para reagendar. Encaixe de 15 minutos.
       </p>
       <div className="sr-only" role="status">
         {drag
-          ? `Arrastando ${drag.appointment.client}. ${drag.target ? `Novo horário: ${drag.target}.` : "Escolha um horário destacado."} Escape cancela.`
+          ? `Arrastando ${drag.appointment.client}. ${drag.target ? `Novo horário: ${drag.target}.` : "Escolha um horário disponível na coluna do profissional."} Escape cancela.`
           : ""}
       </div>
-      {agendaHours(appointments).map((slot) => (
-        <section
-          className="stack-slot"
-          aria-label={`Horário ${slot.label}`}
-          key={slot.label}
-        >
-          <time className="stack-hour">{slot.label}</time>
-          <div className="stack-slot-items">
-            {drag && (
-              <div className="stack-drop-grid">
-                {["00", "15", "30", "45"]
-                  .map((minute) => `${slot.label.slice(0, 2)}:${minute}`)
-                  .filter((time) => time >= "08:00" && time <= "20:00")
-                  .map((time) => (
+      <div className="timeline-scroll" ref={scrollArea}>
+        <div className="timeline-header" style={laneStyle}>
+          <span>Hora</span>
+          {laneNames.map((name) => (
+            <strong key={name}>{admin ? name : "Minha agenda"}</strong>
+          ))}
+        </div>
+        <div className="timeline-board" style={{ ...laneStyle, height }}>
+          <div className="timeline-axis">
+            {ticks
+              .filter((minute) => minute % 60 === 0)
+              .map((minute) => (
+                <time key={minute} style={{ top: (minute - first) * scale }}>
+                  {minuteTime(minute)}
+                </time>
+              ))}
+          </div>
+          {laneNames.map((name) => (
+            <div
+              className="timeline-lane"
+              key={name}
+              aria-label={`Horários de ${name}`}
+            >
+              {ticks
+                .filter(
+                  (minute) =>
+                    !fitsWorkSchedule(
+                      schedules.find((s) => s.professional === name),
+                      date,
+                      minuteTime(minute),
+                      15,
+                    ),
+                )
+                .map((minute) => (
+                  <div
+                    className="timeline-unavailable"
+                    key={`unavailable-${minute}`}
+                    style={{
+                      top: (minute - first) * scale,
+                      height: 15 * scale,
+                    }}
+                  >
+                    {minute % 60 === 0 ? <span>Indisponível</span> : null}
+                  </div>
+                ))}
+              {drag &&
+                drag.appointment.professional === name &&
+                ticks.map((minute) => {
+                  const time = minuteTime(minute),
+                    allowed = available.includes(time);
+                  return (
                     <div
                       key={time}
-                      data-drop-time={time}
-                      className={`stack-drop-target ${drag.target === time ? "is-over" : ""}`}
-                    >
-                      {time}
-                    </div>
-                  ))}
-              </div>
-            )}
-            {slot.appointments.length ? (
-              slot.appointments.map((a) => (
-                <div
-                  className={
-                    drag?.appointment.id === a.id ? "stack-source-dragging" : ""
-                  }
-                  key={a.id}
-                >
-                  <div
-                    className={`stack-draggable-box stack-tone-${agendaStatusTone(a.status)}`}
-                  >
-                    {canReschedule(a) && (
-                      <button
-                        className="stack-drag-handle"
-                        aria-label={`Arrastar atendimento de ${a.client} às ${a.time}`}
-                        title="Arrastar para outro horário; use Reagendar para teclado"
-                        onPointerDown={(event) => start(event, a)}
-                        onPointerMove={move}
-                        onPointerUp={finish}
-                        onPointerCancel={reset}
-                        onLostPointerCapture={reset}
-                      >
-                        <GripVertical size={22} />
-                      </button>
-                    )}
-                    <button
-                      className="stack-appointment"
-                      aria-expanded={expanded === a.id}
-                      aria-controls={`stack-details-${a.id}`}
-                      onClick={() => {
-                        if (!active.current)
-                          onExpand(expanded === a.id ? null : a.id);
+                      data-drop-time={allowed ? time : undefined}
+                      aria-label={`${time} ${allowed ? "disponível" : "indisponível"}`}
+                      className={`timeline-drop-target ${allowed ? "" : "unavailable"} ${drag.target === time ? "is-over" : ""}`}
+                      style={{
+                        top: (minute - first) * scale,
+                        height: 15 * scale,
                       }}
                     >
-                      <span className="stack-box-head">
-                        <strong>
-                          {a.time} · {a.client}
-                        </strong>
-                        <span className="stack-status">{a.status}</span>
-                      </span>
-                      <span className="stack-box-body">
-                        <span>{a.procedure}</span>
-                        <strong>{money(a.value)}</strong>
-                      </span>
-                      {admin && <small>{a.professional}</small>}
-                    </button>
-                  </div>
-                  {canReschedule(a) && (
-                    <button
-                      className="text-button stack-reschedule"
-                      onClick={() => onReschedule(a)}
-                    >
-                      <CalendarClock size={14} />
-                      Reagendar
-                    </button>
-                  )}
-                  {expanded === a.id && (
-                    <div className="stack-detail" id={`stack-details-${a.id}`}>
-                      {renderDetails(a)}
+                      {time}
+                      {!allowed ? " · indisponível" : ""}
                     </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <span className="stack-empty">Sem agendamentos</span>
+                  );
+                })}
+              {layout
+                .filter((item) => item.appointment.professional === name)
+                .map((item) => {
+                  const a = item.appointment;
+                  return (
+                    <div
+                      key={a.id}
+                      className={`timeline-event stack-tone-${agendaStatusTone(a.status)} ${drag?.appointment.id === a.id ? "timeline-source-dragging" : ""} ${item.end - item.start <= 30 ? "timeline-compact" : ""} ${item.end - item.start < 30 ? "timeline-short" : ""}`}
+                      style={{
+                        top: (item.start - first) * scale,
+                        height: (item.end - item.start) * scale,
+                        left: `calc(${(item.column / item.columns) * 100}% + 3px)`,
+                        width: `calc(${100 / item.columns}% - 6px)`,
+                      }}
+                    >
+                      {canReschedule(a) && (
+                        <button
+                          className="stack-drag-handle"
+                          aria-label={`Arrastar atendimento de ${a.client} às ${a.time}`}
+                          title="Arrastar para outro horário"
+                          onPointerDown={(event) => start(event, a)}
+                          onPointerMove={move}
+                          onPointerUp={finish}
+                          onPointerCancel={reset}
+                          onLostPointerCapture={reset}
+                        >
+                          <GripVertical size={18} />
+                        </button>
+                      )}
+                      <button
+                        className="timeline-event-content"
+                        aria-label={`${a.time} a ${minuteTime(item.end)} · ${a.client} · ${a.procedure} · ${money(a.value)} · ${a.status}`}
+                        aria-expanded={expanded === a.id}
+                        aria-controls="timeline-selected-details"
+                        onClick={() => {
+                          if (!active.current)
+                            onExpand(expanded === a.id ? null : a.id);
+                        }}
+                        title={`${a.client} · ${a.procedure} · ${a.status}`}
+                      >
+                        <span className="timeline-event-time">
+                          {a.time}–{minuteTime(item.end)} ·{" "}
+                          {item.end - item.start} min
+                        </span>
+                        <strong>{a.client}</strong>
+                        <span className="timeline-event-service">
+                          {a.procedure}
+                        </span>
+                        <span className="timeline-event-value">
+                          {money(a.value)} <small>{a.status}</small>
+                        </span>
+                        {canReschedule(a) &&
+                          !fitsWorkSchedule(
+                            schedules.find((s) => s.professional === name),
+                            date,
+                            a.time,
+                            item.end - item.start,
+                          ) && (
+                            <span className="timeline-warning">
+                              Revisar disponibilidade
+                            </span>
+                          )}
+                      </button>
+                    </div>
+                  );
+                })}
+            </div>
+          ))}
+        </div>
+      </div>
+      {selected && (
+        <div
+          ref={detailsRef}
+          className="timeline-selected"
+          id="timeline-selected-details"
+        >
+          <div className="timeline-selected-head">
+            <strong>Atendimento selecionado</strong>
+            {canReschedule(selected) && (
+              <button
+                className="secondary"
+                onClick={() => onReschedule(selected)}
+              >
+                <CalendarClock size={16} />
+                Reagendar
+              </button>
             )}
+            <button className="text-button" onClick={() => onExpand(null)}>
+              Fechar detalhes
+            </button>
           </div>
-        </section>
-      ))}
+          {renderDetails(selected)}
+        </div>
+      )}
       {drag && (
         <div
           className={`stack-drag-preview stack-tone-${agendaStatusTone(drag.appointment.status)}`}
@@ -279,7 +423,7 @@ export default function AgendaStack({
           <span>
             {drag.target
               ? `Soltar às ${drag.target}`
-              : "Arraste até um horário"}
+              : "Escolha um horário disponível"}
           </span>
         </div>
       )}

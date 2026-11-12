@@ -47,3 +47,12 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Build e 50 testes aprovados. Casos de reagendamento cobrem intervalos de 15 minutos, datas e horários inválidos, conflitos/horários contíguos, exclusão do próprio registro, profissionais diferentes, preservação dos campos e limites do perfil demonstrativo.
 - Navegador em origem local isolada: arraste real do atendimento de Marcos das 09:00 para 10:15 aprovado, preservando dados. Formulário com tentativa às 14:00 detectou conflito com outro atendimento e manteve 10:15.
 - Alternativa por formulário disponível para teclado/toque. Toque prolongado implementado com Pointer Events e alça dedicada; não houve teste em celular físico.
+
+## Procedimentos múltiplos, disponibilidade, grade proporcional e períodos
+
+- 68 testes de domínio aprovados. Novos cenários cobrem duração/preço/repasses somados e fixados, habilitação, jornada reduzida, dia desmarcado, pausa parcial, ausência integral, espaço até o fim do expediente, cancelamentos/ausências, bloqueios no reagendamento, layout proporcional e sobreposições, limites de meses/anos e ano bissexto.
+- Navegador em localhost, separado dos dados em 127.0.0.1: cadastro de dois procedimentos totalizando 90 minutos e R$245; grade mostrou 11:15–12:45 com 180px de altura, contra 120px para 60 minutos e 60px para 30 minutos.
+- Desmarcação de quarta-feira avisou sobre três atendimentos afetados. Após restaurar o dia, restrição 12h–13h avisou sobre um atendimento afetado, preservando os registros.
+- Arraste real na grade proporcional moveu 10:15 para 09:00, preservando o atendimento e respeitando a disponibilidade.
+- Navegação Início anual e Agenda Ano → Novembro → 11/11 verificada no navegador. Grade de 712px em área própria de 326px no celular de 390px, sem transbordamento da página.
+- Toque prolongado permanece implementado por Pointer Events; aparelhos físicos e uso simultâneo por múltiplos usuários não foram testados.
