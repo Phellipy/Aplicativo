@@ -54,6 +54,7 @@ export type Client = {
   phone: string;
   lastVisit: string;
   consent: boolean;
+  document?: string;
   deletedAt?: string;
 };
 export type Procedure = {
@@ -642,13 +643,17 @@ export function timelineLayout(
   return placed;
 }
 
-export type Period = "day" | "month" | "year";
+export type Period = "day" | "week" | "month" | "year";
 export function filterPeriod(
   appointments: Appointment[],
   period: Period,
   date: string,
 ) {
   if (!validDate(date)) return [];
+  if (period === "week") {
+    const dates = new Set(periodDates(period, date));
+    return appointments.filter((a) => dates.has(a.date));
+  }
   const length = period === "day" ? 10 : period === "month" ? 7 : 4;
   return appointments.filter(
     (a) => a.date.slice(0, length) === date.slice(0, length),
@@ -656,6 +661,13 @@ export function filterPeriod(
 }
 export function periodDates(period: Period, date: string) {
   if (!validDate(date)) return [];
+  if (period === "week") {
+    const timestamp = Date.parse(date),
+      offset = (new Date(timestamp).getUTCDay() + 6) % 7;
+    return Array.from({ length: 7 }, (_, i) =>
+      new Date(timestamp + (i - offset) * 86400000).toISOString().slice(0, 10),
+    );
+  }
   const year = Number(date.slice(0, 4)),
     month = Number(date.slice(5, 7)) - 1;
   const start =
@@ -678,15 +690,20 @@ export function periodDates(period: Period, date: string) {
 export const periodLabel = (period: Period, date: string) =>
   !validDate(date)
     ? "Período inválido"
-    : period === "day"
-      ? date.split("-").reverse().join("/")
-      : period === "month"
-        ? new Intl.DateTimeFormat("pt-BR", {
-            month: "long",
-            year: "numeric",
-            timeZone: "UTC",
-          }).format(new Date(`${date}T12:00:00Z`))
-        : date.slice(0, 4);
+    : period === "week"
+      ? periodDates(period, date)
+          .filter((_, i) => i === 0 || i === 6)
+          .map((day) => day.split("-").reverse().join("/"))
+          .join(" a ")
+      : period === "day"
+        ? date.split("-").reverse().join("/")
+        : period === "month"
+          ? new Intl.DateTimeFormat("pt-BR", {
+              month: "long",
+              year: "numeric",
+              timeZone: "UTC",
+            }).format(new Date(`${date}T12:00:00Z`))
+          : date.slice(0, 4);
 export function workCapacity(
   schedules: WorkSchedule[],
   names: string[],
@@ -879,7 +896,18 @@ export function saveClient(
       "Já existe um cliente com esse nome, inclusive entre os excluídos.",
     );
   const previous = clients.find((client) => client.id === updated.id);
-  const saved = { ...updated, name, phone, deletedAt: previous?.deletedAt };
+  const document = (updated.document ?? "").replace(/[.\/\-\s]/g, "");
+  if (document && !/^([0-9]{11}|[0-9]{14})$/.test(document))
+    throw new Error(
+      "Informe CPF com 11 dígitos ou CNPJ com 14 dígitos, ou deixe em branco.",
+    );
+  const saved = {
+    ...updated,
+    name,
+    phone,
+    document,
+    deletedAt: previous?.deletedAt,
+  };
   return {
     clients: previous
       ? clients.map((client) => (client.id === saved.id ? saved : client))

@@ -1,3 +1,10 @@
+import SettingsPage from "./SettingsPage";
+import AppointmentReminderLink from "./AppointmentReminderLink";
+import {
+  defaultAppointmentMessage,
+  type ReminderOpening,
+} from "./appointmentReminder";
+import FinancePage from "./FinancePage";
 import PresenceControl from "./PresenceControl";
 import { controlPresence, type PresenceEvent } from "./presence";
 import { createRecurringAppointments } from "./recurrence";
@@ -148,7 +155,7 @@ export default function App() {
     "navalha-v01-establishment-name",
     "Navalha & Co.",
   );
-  const [draftName, setDraftName] = useState(establishmentName);
+
   const [confirmProcedureDelete, setConfirmProcedureDelete] = useState(false);
   const nameWords =
     establishmentName
@@ -296,7 +303,13 @@ export default function App() {
     "navalha-v01-message",
     "Olá, {nome}! Sentimos sua falta na {estabelecimento} Que tal reservar um horário com a gente?",
   );
-  const [draftMessage, setDraftMessage] = useState(message);
+  const [appointmentTemplate, setAppointmentTemplate] = useStored(
+    "navalha-v01-appointment-message",
+    defaultAppointmentMessage,
+  );
+  const [reminderOpenings, setReminderOpenings] = useStored<
+    Record<number, ReminderOpening>
+  >("navalha-v01-appointment-reminders", {});
   const [formError, setFormError] = useState("");
   const modalRef = useRef<HTMLDialogElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
@@ -454,6 +467,7 @@ export default function App() {
             id: editingClient?.id ?? Date.now(),
             name: str("name"),
             phone: str("phone"),
+            document: str("document"),
             lastVisit: str("lastVisit"),
             consent: f.get("consent") === "on",
           },
@@ -696,6 +710,22 @@ export default function App() {
         </main>
       </div>
     );
+  const renderReminder = (appointment: Appointment) => (
+    <AppointmentReminderLink
+      appointment={appointment}
+      clients={clients}
+      template={appointmentTemplate}
+      establishment={establishmentName}
+      opening={reminderOpenings[appointment.id]}
+      onOpen={(signature) =>
+        setReminderOpenings((items) => ({
+          ...items,
+          [appointment.id]: { signature, openedAt: new Date().toISOString() },
+        }))
+      }
+      onError={setToast}
+    />
+  );
   const appointmentRows = (list: Appointment[], actions = false) =>
     actions ? (
       <div className="agenda-list">
@@ -721,6 +751,7 @@ export default function App() {
                 </div>
               </div>
               <Badge text={a.status} />
+              {renderReminder(a)}
             </div>
             <div className="agenda-card-bottom">
               <div className="agenda-payment">
@@ -1384,6 +1415,7 @@ export default function App() {
                         moveAppointment(appointment, date, time)
                       }
                       onReschedule={setRescheduleTarget}
+                      renderReminder={renderReminder}
                       renderDetails={(appointment) =>
                         appointmentRows([appointment], true)
                       }
@@ -1440,50 +1472,12 @@ export default function App() {
             </>
           )}
           {page === "Financeiro" && (
-            <>
-              <div className="notice">
-                <Wallet size={20} />
-                <span>
-                  Recebido considera somente atendimentos concluídos com
-                  pagamento registrado. Repasses calculados incluem todos os
-                  concluídos. Não há conexão bancária, cobrança ou pagamento de
-                  repasses.
-                </span>
-              </div>
-              <div className="stats finance-stats">
-                {[
-                  {
-                    label: admin ? "Recebido" : "Meus serviços pagos",
-                    value: revenue,
-                  },
-                  { label: "Repasses calculados", value: payout },
-                  {
-                    label: admin ? "Saldo antes de despesas" : "Meus ganhos",
-                    value: admin ? revenue - paidPayout : payout,
-                  },
-                ].map((s) => (
-                  <div className="stat" key={s.label}>
-                    <span>{s.label}</span>
-                    <strong>{money(s.value)}</strong>
-                    <small>11 de novembro · dados demo</small>
-                  </div>
-                ))}
-              </div>
-              <section className="panel">
-                <div className="panel-head">
-                  <h2>
-                    {admin
-                      ? "Serviços concluídos hoje"
-                      : "Meus serviços concluídos hoje"}
-                  </h2>
-                </div>
-                {appointmentRows(completed)}
-                <div className="notice">
-                  O saldo não inclui despesas, taxas ou tributos e não
-                  representa lucro.
-                </div>
-              </section>
-            </>
+            <FinancePage
+              appointments={visible}
+              clients={clients}
+              establishmentName={establishmentName}
+              admin={admin}
+            />
           )}
           {page === "Métricas" && admin && (
             <MetricsPage
@@ -1493,6 +1487,7 @@ export default function App() {
               names={professionals}
               presence={presence}
               now={presenceNow}
+              establishmentName={establishmentName}
             />
           )}
           {page === "Profissionais" && admin && (
@@ -1611,122 +1606,23 @@ export default function App() {
             </section>
           )}
           {page === "Configurações" && admin && (
-            <div className="settings-grid">
-              <section className="panel settings establishment-settings">
-                <h2>Estabelecimento</h2>
-                <form
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    if (!draftName.trim()) return;
-                    setEstablishmentName(draftName.trim());
-                    setDraftName(draftName.trim());
-                    setToast("Nome do estabelecimento salvo neste navegador.");
-                  }}
-                >
-                  <label>
-                    Nome do estabelecimento
-                    <input
-                      value={draftName}
-                      onChange={(event) => setDraftName(event.target.value)}
-                      maxLength={80}
-                      required
-                    />
-                  </label>
-                  <p>
-                    As iniciais da marca são geradas automaticamente a partir do
-                    nome.
-                  </p>
-                  <button
-                    className="primary"
-                    disabled={
-                      !draftName.trim() ||
-                      draftName.trim() === establishmentName
-                    }
-                  >
-                    Salvar nome
-                  </button>
-                </form>
-              </section>
-              <section className="panel settings">
-                <h2>Lembretes de retorno</h2>
-                <p>
-                  Prepare um convite pessoal para quem não volta há algum tempo.
-                </p>
-                <div className="divider" />
-                <div className="setting-line">
-                  <div>
-                    <strong>Prazo sem atendimento</strong>
-                    <small>Clientes com última visita há 30 dias ou mais</small>
-                  </div>
-                  <span className="setting-value">30 dias</span>
-                </div>
-                <div className="setting-line">
-                  <div>
-                    <strong>Envio manual no WhatsApp</strong>
-                    <small>
-                      O botão abre a conversa; o envio é feito no WhatsApp
-                    </small>
-                  </div>
-                  <Badge text="Obrigatória" />
-                </div>
-                <div className="setting-line">
-                  <div>
-                    <strong>Proteção contra repetição</strong>
-                    <small>
-                      Bloqueia a abertura do mesmo texto para o mesmo cliente
-                      por 7 dias
-                    </small>
-                  </div>
-                  <ShieldCheck size={22} />
-                </div>
-                <label>
-                  Mensagem padrão
-                  <textarea
-                    rows={5}
-                    value={draftMessage}
-                    onChange={(e) => setDraftMessage(e.target.value)}
-                  />
-                </label>
-                <p>
-                  Use {"{nome}"} para o primeiro nome e {"{estabelecimento}"}{" "}
-                  para o nome da empresa.
-                </p>
-                <button
-                  className="primary"
-                  disabled={!draftMessage.trim()}
-                  onClick={() => {
-                    setMessage(draftMessage);
-                    setToast("Mensagem padrão salva neste navegador.");
-                  }}
-                >
-                  Salvar configurações
-                </button>
-              </section>
-              <div>
-                <section className="panel settings">
-                  <span className="eyebrow">PRÉ-VISUALIZAÇÃO</span>
-                  <div className="message-preview">
-                    {draftMessage
-                      .replaceAll("{nome}", "Gustavo")
-                      .replaceAll("{estabelecimento}", establishmentName)}
-                  </div>
-                  <div className="notice">
-                    <MessageSquare size={20} />O botão abre o WhatsApp com o
-                    texto pronto. Não há envio automático, importação de
-                    contatos ou API de mensagens.
-                  </div>
-                </section>
-                <section className="panel settings">
-                  <h2>Sobre esta demonstração</h2>
-                  <p>Versão 0.1 · React + TypeScript + Vite</p>
-                  <p>
-                    Dados locais fictícios. O controle de perfil é apenas
-                    visual. Um ambiente real precisa de autenticação e
-                    autorização no servidor.
-                  </p>
-                </section>
-              </div>
-            </div>
+            <SettingsPage
+              name={establishmentName}
+              message={message}
+              appointmentTemplate={appointmentTemplate}
+              onName={(value) => {
+                setEstablishmentName(value);
+                setToast("Nome do estabelecimento salvo neste navegador.");
+              }}
+              onReturn={(value) => {
+                setMessage(value);
+                setToast("Lembrete de retorno salvo neste navegador.");
+              }}
+              onAppointment={(value) => {
+                setAppointmentTemplate(value);
+                setToast("Lembrete de agendamento salvo neste navegador.");
+              }}
+            />
           )}
           <footer>
             {establishmentName} <span>Feito para cuidar do seu negócio.</span>
@@ -1995,6 +1891,16 @@ export default function App() {
                     required
                     type="tel"
                     maxLength={22}
+                  />
+                </label>
+                <label>
+                  CPF ou CNPJ (opcional)
+                  <input
+                    name="document"
+                    defaultValue={editingClient?.document ?? ""}
+                    inputMode="numeric"
+                    maxLength={18}
+                    placeholder="11 dígitos para CPF ou 14 para CNPJ"
                   />
                 </label>
                 <label>

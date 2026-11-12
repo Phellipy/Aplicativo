@@ -3875,3 +3875,219 @@ fieldset .check-row input {
     padding: 8px;
   }
 }
+
+.export-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.export-toolbar > p,
+.export-help {
+  font-size: 12px;
+  color: var(--muted);
+}
+.export-toolbar label {
+  font-size: 12px;
+}
+.report-print-heading {
+  display: none;
+}
+.finance-table {
+  min-width: 1100px;
+}
+.finance-table th,
+.finance-table td {
+  padding: 12px;
+  font-size: 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.finance-table th {
+  white-space: nowrap;
+}
+.finance-table td:nth-child(3) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+  body,
+  .app,
+  .content {
+    background: white !important;
+    color: #172536;
+  }
+  .sidebar,
+  .topbar,
+  .page-head,
+  footer,
+  dialog,
+  .toast,
+  .no-print,
+  .metrics-filters {
+    display: none !important;
+  }
+  .app {
+    display: block !important;
+  }
+  .app > div,
+  .app > main {
+    margin: 0 !important;
+    width: auto !important;
+  }
+  .content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+  .report-print-heading {
+    display: block;
+    margin-bottom: 16px;
+  }
+  .report-print-heading h1 {
+    font-size: 20px;
+  }
+  .report-print-heading p {
+    font-size: 11px;
+  }
+  .metrics-grid {
+    display: block;
+  }
+  .metric-panel {
+    break-inside: avoid;
+    margin-bottom: 14px;
+    box-shadow: none;
+  }
+  .metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .metrics-export-area .stats {
+    break-inside: avoid;
+  }
+  .metrics-export-area .panel,
+  .metrics-export-area .stat {
+    box-shadow: none;
+  }
+  .metrics-export-area svg {
+    max-width: 100%;
+  }
+  .metrics-export-area * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .chart-scroll {
+    overflow: visible !important;
+  }
+}
+@media print {
+  .metrics-kpis {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    break-inside: avoid;
+  }
+  .trend-scroll {
+    overflow: visible !important;
+  }
+  .trend-scroll .metric-svg {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+  .chart-data {
+    display: none;
+  }
+}
+
+.settings-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.settings-tabs button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+}
+.settings-tabs button[aria-selected="true"] {
+  background: #eaf1fb;
+  color: #285a99;
+  font-weight: 700;
+}
+#settings-panel > .settings {
+  max-width: 760px;
+}
+.appointment-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid #bce0c8;
+  background: #edf8f0;
+  color: #287546;
+  text-decoration: none;
+}
+.appointment-whatsapp.was-opened {
+  color: #8b9691;
+  background: transparent;
+  border-color: #d9dfdb;
+}
+.appointment-whatsapp.unavailable {
+  color: #9b9da0;
+  background: transparent;
+  border-color: transparent;
+}
+.appointment-whatsapp:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+.timeline-reminder {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 4;
+}
+.timeline-reminder .appointment-whatsapp {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+}
+.timeline-event-heading {
+  padding-right: 27px;
+}
+.timeline-compact .timeline-event-heading {
+  padding-right: 24px;
+}
+.timeline-short .timeline-event-heading {
+  padding-right: 0;
+}
+.timeline-short .timeline-reminder {
+  top: 0;
+  right: 0;
+}
+.timeline-short .timeline-reminder .appointment-whatsapp {
+  width: 20px;
+  height: 20px;
+}
+.timeline-short .timeline-event-heading .timeline-event-time {
+  padding-right: 18px;
+}

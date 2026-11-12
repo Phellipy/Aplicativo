@@ -34,6 +34,7 @@ type Props = {
   onMove: (appointment: Appointment, time: string) => void;
   onReschedule: (appointment: Appointment) => void;
   renderDetails: (appointment: Appointment) => ReactNode;
+  renderReminder: (appointment: Appointment) => ReactNode;
 };
 type Drag = {
   appointment: Appointment;
@@ -54,6 +55,7 @@ export default function AgendaStack({
   onMove,
   onReschedule,
   renderDetails,
+  renderReminder,
 }: Props) {
   const [drag, setDrag] = useState<Drag | null>(null);
   const active = useRef<Drag | null>(null);
@@ -332,6 +334,9 @@ export default function AgendaStack({
                         width: `calc(${100 / item.columns}% - 6px)`,
                       }}
                     >
+                      <span className="timeline-reminder">
+                        {renderReminder(a)}
+                      </span>
                       {canReschedule(a) ? (
                         <button
                           className="stack-drag-handle"

@@ -73,7 +73,7 @@ export default function AgendaPeriod({
         })}
       </div>
     );
-  const dates = periodDates("month", date),
+  const dates = periodDates(period === "week" ? "week" : "month", date),
     offset = dates.length
       ? (new Date(`${dates[0]}T12:00:00Z`).getUTCDay() + 6) % 7
       : 0;

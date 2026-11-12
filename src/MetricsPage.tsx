@@ -23,6 +23,7 @@ type Props = {
   names: string[];
   presence: PresenceEvent[];
   now: string;
+  establishmentName: string;
 };
 export default function MetricsPage({
   appointments,
@@ -31,6 +32,7 @@ export default function MetricsPage({
   names,
   presence,
   now,
+  establishmentName,
 }: Props) {
   const [period, setPeriod] = useState<MetricsPeriod>("month"),
     [date, setDate] = useState(TODAY),
@@ -66,7 +68,23 @@ export default function MetricsPage({
       : "Selecione uma data válida";
   const percentage = formatPercentage;
   return (
-    <>
+    <section className="metrics-export-area">
+      <div className="report-print-heading">
+        <h1>{establishmentName} · Métricas</h1>
+        <p>
+          {range} · {person === "Todos" ? "Estabelecimento" : person} · Dados
+          demonstrativos
+        </p>
+      </div>
+      <div className="export-toolbar no-print">
+        <p>Exporte os indicadores e gráficos do período selecionado.</p>
+        <button className="secondary" onClick={() => window.print()}>
+          Exportar PDF
+        </button>
+      </div>
+      <p className="export-help no-print">
+        Na janela de impressão, selecione Salvar como PDF.
+      </p>
       <div className="metrics-filters">
         <div
           className="period-buttons"
@@ -354,6 +372,6 @@ export default function MetricsPage({
           </dl>
         </section>
       </div>
-    </>
+    </section>
   );
 }

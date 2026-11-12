@@ -22,6 +22,7 @@ export default function PeriodControls({
         {(
           [
             { value: "day", text: "Hoje" },
+            { value: "week", text: "Semana" },
             { value: "month", text: "Mês" },
             { value: "year", text: "Ano" },
           ] as const
@@ -40,8 +41,12 @@ export default function PeriodControls({
       </div>
       <label className="period-date">
         <span className="sr-only">
-          {period === "day" ? "Data" : period === "month" ? "Mês" : "Ano"} de
-          referência {label}
+          {period === "day" || period === "week"
+            ? "Data"
+            : period === "month"
+              ? "Mês"
+              : "Ano"}{" "}
+          de referência {label}
         </span>
         {period === "year" ? (
           <select
