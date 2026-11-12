@@ -19,4 +19,12 @@ Limites: testes automatizados concentram-se nas regras de domínio; não há su�
 
 - 27 testes aprovados, incluindo conclusão pelas cinco opções, preservação do registro original e bloqueio de conclusão de cancelados/ausentes.
 - Janela inspecionada no navegador com cinco botões: Dinheiro, Pix, Cartão de crédito, Cartão de débito e Não pago.
-- A opção Concluído no seletor de status foi desabilitada para direcionar a conclusão ao botão e à janela.
+- O seletor de status foi removido; a conclusão é realizada exclusivamente pelo botão e pela janela.
+
+## Agenda simplificada
+
+- Sem seletor ou etapa Em atendimento: Agendado → Confirmado → finalização pelo botão Atendimento Concluído. Cancelado e Não compareceu disponíveis no menu ⋯.
+- Uma ação principal por etapa, indicadores de conclusão e pagamento separados, botões de pagamento com cores e ícones.
+- Compatibilidade com dados locais anteriores preservando formas de pagamento.
+
+Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida inspecionados no navegador sem alterar os registros de atendimento.

@@ -1655,3 +1655,116 @@ fieldset .check-row input {
   background: #edf4fc;
   color: var(--blue);
 }
+.badge.red {
+  background: #fceeed;
+  color: #a44840;
+}
+.badge.neutral {
+  background: #eff0f2;
+  color: #626b75;
+}
+.appointment-actions {
+  flex-direction: row;
+  align-items: flex-start;
+  min-width: 0;
+}
+.action-confirm {
+  background: #fff1c6;
+  color: #735100;
+  box-shadow: none;
+  border: 1px solid #e7ce82;
+}
+.action-confirm:hover {
+  background: #f8e4a3;
+}
+.action-complete {
+  background: #217447;
+  color: white;
+  box-shadow: none;
+}
+.action-complete:hover {
+  background: #195b37;
+}
+.appointment-more {
+  flex-shrink: 0;
+}
+.appointment-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fafbfc;
+  margin-top: 5px;
+}
+.appointment-options button {
+  background: transparent;
+  min-height: 44px;
+  padding: 8px 12px;
+  text-align: left;
+  font-size: 12px;
+  border-radius: 6px;
+  color: #a44840;
+}
+.appointment-options button:hover {
+  background: #fceeed;
+}
+.payment-options .payment-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--payment-border);
+  background: var(--payment-bg);
+  color: var(--payment-color);
+  border-radius: 10px;
+  font-weight: 600;
+  min-height: 72px;
+  padding: 14px;
+}
+.payment-options .payment-option:hover {
+  background: var(--payment-hover);
+  border-color: var(--payment-color);
+  color: var(--payment-color);
+}
+.payment-0 {
+  --payment-bg: #edf8f0;
+  --payment-color: #24673c;
+  --payment-border: #c9e6d1;
+  --payment-hover: #dcefe1;
+}
+.payment-1 {
+  --payment-bg: #e9f9f6;
+  --payment-color: #116b60;
+  --payment-border: #bde6df;
+  --payment-hover: #d3f0eb;
+}
+.payment-2 {
+  --payment-bg: #edf4ff;
+  --payment-color: #245fa6;
+  --payment-border: #cadcf6;
+  --payment-hover: #dae9fc;
+}
+.payment-3 {
+  --payment-bg: #f3efff;
+  --payment-color: #6941a5;
+  --payment-border: #ddd0f4;
+  --payment-hover: #e9e0fa;
+}
+.payment-4 {
+  --payment-bg: #fff4e7;
+  --payment-color: #975311;
+  --payment-border: #f1d7b6;
+  --payment-hover: #fbe7ce;
+}
+@media (max-width: 420px) {
+  .payment-options .payment-option {
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .payment-options .payment-option:last-child {
+    flex-direction: row;
+  }
+}

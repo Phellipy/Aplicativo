@@ -156,7 +156,7 @@ export const initialAppointments: Appointment[] = [
     time: "14:00",
     value: 65,
     commissionRate: 50,
-    status: "Pendente",
+    status: "Agendado",
   },
   {
     id: 5,
@@ -241,3 +241,15 @@ export function completeAppointment(
     throw new Error("Este atendimento não pode ser concluído");
   return { ...recordPayment(appointment, method), status: "Concluído" };
 }
+
+// Compatibilidade com registros da demonstração anterior, sem etapa extra na agenda.
+export const normalizeAppointments = (
+  appointments: Appointment[],
+): Appointment[] =>
+  appointments.map((appointment) =>
+    appointment.status === "Em atendimento"
+      ? { ...appointment, status: "Confirmado" }
+      : appointment.status === "Pendente"
+        ? { ...appointment, status: "Agendado" }
+        : appointment,
+  );

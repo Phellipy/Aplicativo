@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   paymentMethods,
+  normalizeAppointments,
   recordPayment,
   completeAppointment,
   receivedTotal,
@@ -189,4 +190,39 @@ describe("conclusão com escolha de pagamento", () => {
         completeAppointment({ ...initialAppointments[0], status }, "Pix"),
       ).toThrow(),
   );
+});
+
+it("converte registros antigos em andamento para confirmado sem perder o pagamento", () => {
+  const original = {
+    ...initialAppointments[0],
+    status: "Em atendimento",
+    paymentMethod: "Pix" as const,
+  };
+  const [result] = normalizeAppointments([original]);
+  expect(result.status).toBe("Confirmado");
+  expect(result.paymentMethod).toBe("Pix");
+  expect(original.status).toBe("Em atendimento");
+});
+
+it("migra horários pendentes para Agendado e preserva os demais estados", () => {
+  const statuses = [
+    "Pendente",
+    "Agendado",
+    "Confirmado",
+    "Cancelado",
+    "Não compareceu",
+    "Concluído",
+  ];
+  expect(
+    normalizeAppointments(
+      statuses.map((status) => ({ ...initialAppointments[0], status })),
+    ).map((a) => a.status),
+  ).toEqual([
+    "Agendado",
+    "Agendado",
+    "Confirmado",
+    "Cancelado",
+    "Não compareceu",
+    "Concluído",
+  ]);
 });

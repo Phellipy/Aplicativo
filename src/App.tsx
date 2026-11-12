@@ -19,9 +19,15 @@ import {
   Clock,
   MessageSquare,
   ShieldCheck,
+  MoreHorizontal,
+  Banknote,
+  QrCode,
+  CreditCard,
+  CircleAlert,
 } from "lucide-react";
 import {
   paymentMethods,
+  normalizeAppointments,
   completeAppointment,
   receivedTotal,
   initialAppointments,
@@ -58,11 +64,15 @@ const pages: { name: Page; icon: typeof Users }[] = [
   { name: "Procedimentos", icon: Scissors },
   { name: "Configurações", icon: Settings },
 ];
-function useStored<T>(key: string, initial: T) {
+function useStored<T>(
+  key: string,
+  initial: T,
+  normalize: (value: T) => T = (value) => value,
+) {
   const [value, setValue] = useState<T>(() => {
     try {
       const v = localStorage.getItem(key);
-      return v ? JSON.parse(v) : initial;
+      return normalize(v ? JSON.parse(v) : initial);
     } catch {
       return initial;
     }
@@ -86,9 +96,9 @@ function Avatar({ name }: { name: string }) {
 function Badge({ text }: { text: string }) {
   return (
     <span
-      className={`badge ${text === "Concluído" || text === "Confirmado" || text === "Ativo" ? "green" : text.includes("Pendente") ? "amber" : "blue"}`}
+      className={`badge ${text === "Concluído" || text === "Ativo" || text.startsWith("Pago") ? "green" : text === "Confirmado" ? "blue" : text === "Cancelado" ? "red" : text === "Não compareceu" ? "neutral" : text === "Agendado" || text.toLowerCase().includes("pendente") || text === "Não pago" ? "amber" : "blue"}`}
     >
-      <i />
+      {text === "Concluído" ? <Check size={12} /> : <i />}
       {text}
     </span>
   );
@@ -100,6 +110,7 @@ export default function App() {
   const [appointments, setAppointments] = useStored<Appointment[]>(
       "navalha-v01-appointments",
       initialAppointments,
+      normalizeAppointments,
     ),
     [clients, setClients] = useStored<Client[]>(
       "navalha-v01-clients",
@@ -121,6 +132,7 @@ export default function App() {
     ),
     [toast, setToast] = useState(""),
     [campaignClient, setCampaignClient] = useState<Client | null>(null);
+  const [actionMenu, setActionMenu] = useState<number | null>(null);
   const [completionAppointment, setCompletionAppointment] =
     useState<Appointment | null>(null);
   const [message, setMessage] = useStored(
@@ -167,6 +179,7 @@ export default function App() {
   const payout = completed.reduce((s, a) => s + commission(a), 0),
     eligible = eligibleClients(clients, campaigns);
   const navigate = (p: Page) => {
+    setActionMenu(null);
     setPage(p);
     setMobile(false);
     setQuery("");
@@ -244,7 +257,7 @@ export default function App() {
           time: str("time"),
           value: proc.price,
           commissionRate: procedureRate(proc, prof),
-          status: "Confirmado",
+          status: "Agendado",
         },
       ]);
     }
@@ -252,6 +265,7 @@ export default function App() {
     setToast("Cadastro salvo neste navegador.");
   }
   function updateStatus(a: Appointment, status: string) {
+    setActionMenu(null);
     setAppointments((items) =>
       items.map((x) => (x.id === a.id ? { ...x, status } : x)),
     );
@@ -359,42 +373,66 @@ export default function App() {
               {actions && (
                 <td>
                   <div className="appointment-actions">
-                    {a.status === "Pendente" && (
+                    {a.status === "Agendado" && (
                       <button
-                        className="secondary"
+                        className="primary action-confirm"
                         onClick={() => updateStatus(a, "Confirmado")}
                       >
-                        <Check size={16} /> Confirmar atendimento
+                        <Check size={16} />
+                        Confirmar
                       </button>
                     )}
-                    <select
-                      aria-label={`Status de ${a.client}`}
-                      value={a.status}
-                      onChange={(e) => updateStatus(a, e.target.value)}
-                    >
-                      {[
-                        "Pendente",
-                        "Confirmado",
-                        "Em atendimento",
-                        "Concluído",
-                        "Cancelado",
-                        "Não compareceu",
-                      ].map((s) => (
-                        <option key={s} disabled={s === "Concluído"}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                    {!["Concluído", "Cancelado", "Não compareceu"].includes(
-                      a.status,
-                    ) && (
+                    {a.status === "Confirmado" && (
                       <button
-                        className="primary"
-                        onClick={() => setCompletionAppointment(a)}
+                        className="primary action-complete"
+                        onClick={() => {
+                          setActionMenu(null);
+                          setCompletionAppointment(a);
+                        }}
                       >
                         <Check size={16} />
                         Atendimento Concluído
                       </button>
+                    )}
+                    {["Agendado", "Confirmado"].includes(a.status) && (
+                      <div
+                        className="appointment-more"
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setActionMenu(null);
+                            e.currentTarget.querySelector("button")?.focus();
+                          }
+                        }}
+                      >
+                        <button
+                          className="icon"
+                          aria-label={`Mais opções para ${a.client} às ${a.time}`}
+                          aria-expanded={actionMenu === a.id}
+                          aria-controls={`appointment-options-${a.id}`}
+                          onClick={() =>
+                            setActionMenu(actionMenu === a.id ? null : a.id)
+                          }
+                        >
+                          <MoreHorizontal size={20} />
+                        </button>
+                        {actionMenu === a.id && (
+                          <div
+                            className="appointment-options"
+                            id={`appointment-options-${a.id}`}
+                          >
+                            <button
+                              onClick={() => updateStatus(a, "Cancelado")}
+                            >
+                              Cancelar atendimento
+                            </button>
+                            <button
+                              onClick={() => updateStatus(a, "Não compareceu")}
+                            >
+                              Não compareceu
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </td>
@@ -1282,7 +1320,7 @@ export default function App() {
               {[...paymentMethods, "Não pago"].map((option) => (
                 <button
                   key={option}
-                  className="secondary"
+                  className={`payment-option payment-${[...paymentMethods, "Não pago"].indexOf(option)}`}
                   onClick={() => {
                     const method = option === "Não pago" ? "" : option;
                     setAppointments((items) =>
@@ -1308,6 +1346,15 @@ export default function App() {
                     );
                   }}
                 >
+                  {option === "Dinheiro" ? (
+                    <Banknote size={23} />
+                  ) : option === "Pix" ? (
+                    <QrCode size={23} />
+                  ) : option === "Não pago" ? (
+                    <CircleAlert size={23} />
+                  ) : (
+                    <CreditCard size={23} />
+                  )}
                   {option}
                 </button>
               ))}
