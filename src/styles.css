@@ -3100,3 +3100,347 @@ fieldset .check-row input {
 .professional-service-row .check-row span {
   min-width: 0;
 }
+.occupancy-caption {
+  font-size: 10px;
+  color: #8a96a5;
+  line-height: 1.6;
+  margin: -10px 0 22px;
+}
+.metrics-filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.metrics-filters label {
+  min-width: 150px;
+}
+.metrics-filters .period-buttons {
+  align-self: flex-end;
+}
+.metrics-range {
+  font-size: 11px;
+  margin: 15px 0 20px;
+  color: #7f8b9b;
+}
+.metrics-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.metrics-kpis .stat strong {
+  font-size: 26px;
+}
+.metrics-kpis .stat small {
+  display: block;
+  min-height: 32px;
+  line-height: 1.6;
+}
+.metrics-method {
+  font-size: 10px;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.metrics-grid > .panel {
+  margin: 0;
+}
+.metric-panel .panel-head {
+  align-items: flex-start;
+  padding-bottom: 14px;
+}
+.metric-panel .panel-head p {
+  max-width: 430px;
+  line-height: 1.6;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 10px;
+  padding: 0 22px 10px;
+  color: #758398;
+}
+.chart-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+}
+.metric-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  padding: 0 12px;
+}
+.metric-svg [tabindex]:focus {
+  outline: 2px solid #0a6ac6;
+  outline-offset: 2px;
+}
+.chart-empty {
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  color: #9aa3af;
+  font-size: 12px;
+  text-align: center;
+}
+.chart-data {
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  margin-top: 12px;
+}
+.chart-data summary {
+  padding: 12px 22px;
+  cursor: pointer;
+  color: #527fac;
+  min-height: 40px;
+}
+.chart-data td,
+.chart-data th {
+  padding: 8px 15px;
+}
+.chart-footnote {
+  font-size: 10px;
+  line-height: 1.7;
+  padding: 12px 22px 18px;
+  color: #8b96a4;
+}
+.ranking-chart {
+  padding: 0 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+.ranking-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: #627086;
+  margin-bottom: 7px;
+}
+.ranking-label > span {
+  min-width: 0;
+}
+.ranking-label > strong {
+  white-space: nowrap;
+  font-size: 11px;
+  color: #4f637c;
+}
+.ranking-label small {
+  font-size: 9px;
+  color: #a0a8b3;
+  margin-right: 4px;
+}
+.ranking-track {
+  height: 7px;
+  border-radius: 8px;
+  background: #edf1f6;
+  overflow: hidden;
+}
+.ranking-track i {
+  display: block;
+  height: 100%;
+  border-radius: 8px;
+}
+.ranking-row > small {
+  display: block;
+  font-size: 9px;
+  margin-top: 6px;
+  color: #99a2ae;
+}
+.payment-chart {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(120px, 1fr);
+  align-items: center;
+  gap: 15px;
+  padding: 0 22px 22px;
+}
+.payment-chart > svg {
+  max-width: 250px;
+  width: 100%;
+  justify-self: center;
+}
+.payment-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 17px;
+}
+.payment-chart-legend > div {
+  display: grid;
+  gap: 5px;
+}
+.payment-chart-legend span {
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #69788d;
+}
+.payment-chart-legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+}
+.payment-chart-legend strong {
+  font-size: 13px;
+  color: #4a6079;
+}
+.payment-chart-legend small {
+  font-size: 9px;
+}
+.payment-chart > .availability-note {
+  grid-column: 1/-1;
+}
+.status-metrics {
+  display: flex;
+  flex-direction: column;
+  padding: 0 22px 22px;
+  gap: 15px;
+}
+.status-metrics > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #63738a;
+  font-size: 12px;
+}
+.status-metrics span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.status-metrics i {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: var(--stack-accent);
+}
+.status-metrics strong {
+  font-size: 14px;
+}
+.metric-finance-summary dl {
+  margin: 0;
+  padding: 0 22px 20px;
+}
+.metric-finance-summary dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 11px;
+  color: #738096;
+  padding: 12px 0;
+  border-bottom: 1px solid #edf0f4;
+}
+.metric-finance-summary dl > div:last-child {
+  border: 0;
+  color: #436e59;
+  font-weight: 600;
+}
+.metric-finance-summary dd {
+  margin: 0;
+  white-space: nowrap;
+  font-weight: 600;
+  color: #52687f;
+}
+@media (max-width: 1050px) {
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+  .metrics-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 760px) {
+  .metrics-filters {
+    gap: 10px;
+  }
+  .metrics-filters .period-buttons {
+    width: 100%;
+  }
+  .metrics-filters .period-buttons button {
+    flex: 1;
+    min-width: 0;
+    font-size: 11px;
+    padding: 7px 10px;
+  }
+  .metrics-filters label {
+    flex: 1;
+    min-width: 130px;
+  }
+  .metrics-filters input,
+  .metrics-filters select {
+    width: 100%;
+  }
+  .metrics-kpis {
+    gap: 10px;
+  }
+  .metrics-kpis .stat {
+    padding: 15px 12px;
+  }
+  .metrics-kpis .stat strong {
+    font-size: 22px;
+  }
+  .metrics-kpis .stat small {
+    font-size: 9px;
+  }
+  .chart-footnote {
+    padding: 10px 15px 15px;
+  }
+  .chart-legend {
+    padding-left: 15px;
+    font-size: 9px;
+  }
+  .ranking-chart {
+    padding: 0 15px 18px;
+  }
+  .ranking-label {
+    font-size: 10px;
+  }
+  .ranking-label > strong {
+    font-size: 10px;
+  }
+  .payment-chart {
+    padding: 0 15px 18px;
+    gap: 10px;
+    grid-template-columns: 1fr 1fr;
+  }
+  .payment-chart-legend {
+    gap: 12px;
+  }
+  .payment-chart-legend strong {
+    font-size: 11px;
+  }
+  .metric-finance-summary dl {
+    padding: 0 15px 15px;
+  }
+}
+.trend-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+.metric-svg {
+  padding: 0 6px;
+}
+.chart-data summary {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .trend-scroll .metric-svg {
+    min-width: 480px;
+  }
+  .metric-panel .panel-head p {
+    font-size: 10px;
+  }
+}

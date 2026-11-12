@@ -1,4 +1,6 @@
 import AgendaStack from "./AgendaStack";
+import MetricsPage from "./MetricsPage";
+import { occupationStats, hours, formatPercentage } from "./metrics";
 import ProfessionalsPanel from "./ProfessionalsPanel";
 import { verifyDemoCredential } from "./demoAccess";
 import PeriodControls from "./PeriodControls";
@@ -7,6 +9,7 @@ import AppointmentFields, { RescheduleFields } from "./AppointmentFields";
 import WorkScheduleEditor from "./WorkScheduleEditor";
 import { useEffect, useRef, useState, useMemo, type FormEvent } from "react";
 import {
+  ChartNoAxesCombined,
   LayoutDashboard,
   CalendarDays,
   Users,
@@ -34,7 +37,6 @@ import {
 import {
   filterPeriod,
   periodLabel,
-  workCapacity,
   type Period,
   initialWorkSchedules,
   createAppointment,
@@ -74,6 +76,7 @@ import {
   type Role,
 } from "./domain";
 type Page =
+  | "Métricas"
   | "Dashboard"
   | "Agenda"
   | "Clientes"
@@ -84,6 +87,7 @@ type Page =
 const pages: { name: Page; icon: typeof Users }[] = [
   { name: "Dashboard", icon: LayoutDashboard },
   { name: "Agenda", icon: CalendarDays },
+  { name: "Métricas", icon: ChartNoAxesCombined },
   { name: "Clientes", icon: Users },
   { name: "Financeiro", icon: Wallet },
   { name: "Profissionais", icon: UserRound },
@@ -263,7 +267,8 @@ export default function App() {
   }, [toast]);
   const admin = role === "admin",
     allowed = pages.filter(
-      (p) => admin || !["Clientes", "Profissionais"].includes(p.name),
+      (p) =>
+        admin || !["Clientes", "Profissionais", "Métricas"].includes(p.name),
     );
   const visible = visibleAppointments(
     appointments,
@@ -283,9 +288,11 @@ export default function App() {
     page === "Dashboard" ? dashboardDate : TODAY,
   );
   const agendaItems = filterPeriod(scoped, agendaPeriod, date);
-  const capacity = useMemo(
+  const occupancy = useMemo(
     () =>
-      workCapacity(
+      occupationStats(
+        visible,
+        procedures,
         workingSchedules,
         admin
           ? person === "Todos"
@@ -296,6 +303,8 @@ export default function App() {
         dashboardDate,
       ),
     [
+      appointments,
+      procedures,
       schedules,
       records,
       admin,
@@ -830,6 +839,8 @@ export default function App() {
               <p>
                 {
                   {
+                    Métricas:
+                      "Acompanhe ocupação, atendimentos, clientes e resultados do estabelecimento.",
                     Dashboard: admin
                       ? "Um olhar sobre o que acontece no seu estabelecimento."
                       : "Sua agenda e seus resultados, em um só lugar.",
@@ -917,11 +928,9 @@ export default function App() {
                     icon: UserRound,
                   },
                   {
-                    label: "Ocupação prevista",
-                    value: capacity
-                      ? `${((today.reduce((sum, a) => sum + appointmentDuration(a, procedures), 0) / capacity) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`
-                      : "—",
-                    note: "Base: jornada e bloqueios cadastrados",
+                    label: "Taxa de ocupação",
+                    value: formatPercentage(occupancy.rate),
+                    note: `${hours(occupancy.occupiedMinutes)} atendidas / ${hours(occupancy.availableMinutes)} disponíveis`,
                     icon: Clock,
                   },
                 ].map((s, i) => (
@@ -935,6 +944,11 @@ export default function App() {
                   </div>
                 ))}
               </div>
+              <p className="occupancy-caption">
+                Ocupação calculada pela duração dos serviços concluídos dentro
+                da jornada, descontando ausências. Agendamentos futuros não
+                contam como tempo atendido.
+              </p>
               <div className="dashboard-grid">
                 <section
                   className={`panel schedule-panel ${admin ? "admin" : ""}`}
@@ -1390,6 +1404,14 @@ export default function App() {
                 </div>
               </section>
             </>
+          )}
+          {page === "Métricas" && admin && (
+            <MetricsPage
+              appointments={appointments}
+              procedures={procedures}
+              schedules={workingSchedules}
+              names={professionals}
+            />
           )}
           {page === "Profissionais" && admin && (
             <ProfessionalsPanel

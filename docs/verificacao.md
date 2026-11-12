@@ -63,3 +63,12 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Três testes de senha demonstrativa executados somente em memória: derivação com sal, verificação correta/incorreta, sais diferentes e rejeição de entrada curta. Nenhuma senha real, derivação ou sal de uso foi salvo no código.
 - Navegador em localhost isolado dos dados em 127.0.0.1: editado valor do catálogo; cadastrado profissional fictício, atribuídos serviço e repasse individual; janela de jornada inspecionada. Desabilitar removeu o nome da seleção de acesso; habilitar restaurou. Perfil novo mostrou apenas seu serviço, sem controles de edição ou repasse.
 - Janela de Acesso inspecionada. Não foi alterada nenhuma credencial real pelo agente; o formulário de senha é demonstrativo e deve usar exclusivamente dados fictícios.
+
+## Ocupação realizada e Métricas
+
+- 97 testes aprovados, incluindo 19 novos casos de ocupação, capacidade simultânea, interseção com restrições, sobreposições, duração fixada, recebimentos/repasses, agrupamento de crédito/débito, rankings, semana entre anos, estados vazios e percentuais positivos pequenos.
+- Build TypeScript/Vite aprovado. Sem novas dependências para gráficos.
+- Navegador em localhost, isolado dos dados em 127.0.0.1: dois serviços concluídos totalizaram 2h de 35h disponíveis (5,7%), R$340 recebidos e R$196 de saldo antes de despesas. Cartão R$160 e Pix R$180 apareceram no gráfico circular; a falta registrada entrou no ranking e na taxa de faltas.
+- Filtros Dia/Semana/Ano e profissional verificados. Ocupação anual pequena aparece como 0,04%, sem ser arredondada a zero.
+- Desktop e viewport de 390px inspecionados. Página manteve 390px; gráficos de evolução usam área de rolagem própria de 480px dentro de 352px.
+- Limites explícitos: tempo estimado pela duração, jornada atual aplicada ao histórico, disponibilidade do período inteiro e recebimentos agrupados pela data do atendimento. Não há cronômetro, conciliação financeira ou metas automáticas.

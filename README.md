@@ -23,7 +23,8 @@ O build gera `dist/`. O administrador demonstrativo entra sem credencial. Seleci
 ## Módulos e fluxos
 
 - **Login**: seleção explícita de perfil demonstrativo e verificação local de senha fictícia, quando configurada pelo administrador. Não representa autenticação segura.
-- **Dashboard**: períodos Hoje, Mês e Ano, indicadores derivados dos atendimentos e da jornada cadastrada, filtros por profissional, resumo de valores e alertas de reativação.
+- **Dashboard**: períodos Hoje, Mês e Ano, taxa de ocupação realizada, valores e repasses, filtros por profissional e alertas de reativação.
+- **Métricas** (administrador): gráficos de atendimentos, financeiro, clientes, faltas, pagamentos e ocupação, com Dia/Semana/Mês/Ano e filtro por profissional.
 - **Agenda**: Lista ou Pilha, períodos Hoje/Mês/Ano, cadastro com múltiplos procedimentos, horários filtrados por jornada e ausências, validação de habilitação e sobreposição de horários, confirmação explícita do atendimento, mudança de status e atualização da última visita ao concluir. Pagamento manual por dinheiro, Pix, cartão de crédito ou cartão de débito, com opção Não pago.
 - **Clientes**: cadastro, busca por nome/telefone, última visita, registro de autorização para lembretes e fila de reativação.
 - **Financeiro**: valores recebidos de serviços concluídos com pagamento registrado, repasses de todos os concluídos e saldo antes de despesas (recebido menos repasses dos serviços pagos). O saldo não é apresentado como lucro.
@@ -61,6 +62,8 @@ Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram a
 - `src/demoAccess.ts`, `src/demoAccess.test.ts`: derivação/verificação local de senhas fictícias e testes.
 - `src/AgendaStack.tsx`: escala temporal proporcional, colunas por profissional e arraste.
 - `src/PeriodControls.tsx`, `src/AgendaPeriod.tsx`: períodos e navegação de calendário.
+- `src/MetricsPage.tsx`, `src/MetricCharts.tsx`: painéis e gráficos responsivos, com tabelas acessíveis para consultar os valores.
+- `src/metrics.ts`, `src/metrics.test.ts`: cálculo de ocupação, períodos, recebimentos, rankings e testes.
 - `src/domain.test.ts`: testes das regras principais com Vitest.
 - `src/styles.css`: estilos compartilhados e layouts para desktop, tablet e celular.
 - `src/main.tsx`, `index.html`: entrada do aplicativo.
@@ -125,3 +128,23 @@ Desabilitar remove o profissional dos novos agendamentos e da seleção de acess
 Os vínculos e percentuais antigos são migrados para `navalha-v01-professional-records`; o catálogo persistido fica somente com ID, nome, duração e preço. A vinculação usada no agendamento é derivada dos profissionais ativos.
 
 **Senhas são apenas demonstração local:** a aplicação guarda no navegador uma derivação PBKDF2/SHA-256 com sal aleatório, nunca a senha em texto puro. Não há servidor, sessão segura, recuperação de senha, limite de tentativas ou proteção real dos dados. Não use senhas reais. Um backend com autorização no servidor será necessário para produção. Senhas e derivações geradas durante o uso não são incluídas no repositório.
+
+### Taxa de ocupação e gráficos de métricas
+
+A taxa de ocupação do Início e de Métricas é **horas de serviços concluídos dentro da disponibilidade ÷ horas disponíveis da equipe × 100**. Por exemplo, 2 horas atendidas em 8 horas disponíveis equivalem a 25%. São descontadas restrições e folgas; atendimentos sobrepostos do mesmo profissional não duplicam tempo. Profissionais diferentes somam sua capacidade. Agendados e Confirmados não contam como tempo já atendido. Sem jornada disponível, a taxa aparece como “—”; com jornada e nenhum serviço concluído, aparece 0%.
+
+Esta versão estima o tempo atendido pela duração fixada nos procedimentos, sem cronômetro de início/término efetivo. Usa a jornada atual dos profissionais habilitados para todo o período consultado, inclusive dias futuros. Alterações de jornada/desativação alteram a base histórica, pois ainda não há histórico de vigência de jornadas. Logo, não é uma medição de tempo real nem uma comparação automática com metas de desempenho.
+
+A aba **Métricas** é exclusiva do administrador e oferece:
+
+- Dia, semana (segunda a domingo), mês e ano, com data de referência e profissional.
+- Concluídos e faltas por hora/dia/mês, conforme o período.
+- Recebido e saldo após repasses dos serviços pagos, antes de despesas.
+- Top 10 clientes por atendimentos concluídos, com valor total dos serviços.
+- Até 10 clientes com mais faltas. A taxa individual e geral considera somente Concluídos e Não compareceu; não inclui confirmações futuras nem cancelamentos.
+- Gráfico circular por valor recebido em Cartão (crédito + débito), Dinheiro e Pix.
+- Ocupação por profissional, ticket médio, valores a receber, distribuição de status e resumo dos serviços concluídos.
+
+Recebimentos são somente os serviços concluídos com forma de pagamento registrada. Os gráficos financeiros agrupam pela data do atendimento: não existe data de compensação/pagamento efetivo. Custos, taxas, tributos, estornos e despesas não estão cadastrados; o saldo não representa lucro. Os rankings usam o nome nos registros locais e ainda não distinguem clientes homônimos.
+
+Gráficos vazios não recebem dados artificiais. No celular, os gráficos de evolução têm rolagem própria para manter a leitura; os valores também podem ser consultados em **Ver dados do gráfico**.
