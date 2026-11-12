@@ -123,7 +123,7 @@ export const initialAppointments: Appointment[] = [
     time: "09:00",
     value: 180,
     commissionRate: 40,
-    status: "Confirmado",
+    status: "Agendado",
   },
   {
     id: 2,
@@ -134,7 +134,7 @@ export const initialAppointments: Appointment[] = [
     time: "10:00",
     value: 160,
     commissionRate: 45,
-    status: "Concluído",
+    status: "Agendado",
   },
   {
     id: 3,
@@ -145,7 +145,7 @@ export const initialAppointments: Appointment[] = [
     time: "11:00",
     value: 90,
     commissionRate: 50,
-    status: "Confirmado",
+    status: "Agendado",
   },
   {
     id: 4,
@@ -167,7 +167,7 @@ export const initialAppointments: Appointment[] = [
     time: "15:30",
     value: 180,
     commissionRate: 40,
-    status: "Confirmado",
+    status: "Agendado",
   },
 ];
 export const visibleAppointments = (items: Appointment[], role: Role) =>

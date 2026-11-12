@@ -1623,12 +1623,6 @@ fieldset .check-row input {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
-.appointment-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 170px;
-}
 .payment-control {
   min-width: 180px;
   font-size: 10px;
@@ -1663,11 +1657,6 @@ fieldset .check-row input {
   background: #eff0f2;
   color: #626b75;
 }
-.appointment-actions {
-  flex-direction: row;
-  align-items: flex-start;
-  min-width: 0;
-}
 .action-confirm {
   background: #fff1c6;
   color: #735100;
@@ -1684,31 +1673,6 @@ fieldset .check-row input {
 }
 .action-complete:hover {
   background: #195b37;
-}
-.appointment-more {
-  flex-shrink: 0;
-}
-.appointment-options {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 6px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: #fafbfc;
-  margin-top: 5px;
-}
-.appointment-options button {
-  background: transparent;
-  min-height: 44px;
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 12px;
-  border-radius: 6px;
-  color: #a44840;
-}
-.appointment-options button:hover {
-  background: #fceeed;
 }
 .payment-options .payment-option {
   display: flex;
@@ -1766,5 +1730,229 @@ fieldset .check-row input {
   }
   .payment-options .payment-option:last-child {
     flex-direction: row;
+  }
+}
+.agenda-list {
+  padding: 0 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.agenda-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.agenda-card-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 20px;
+}
+.agenda-time {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  padding-right: 18px;
+}
+.agenda-time strong {
+  font-size: 18px;
+  color: #354456;
+}
+.agenda-time small {
+  font-size: 10px;
+}
+.agenda-client {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+.agenda-client h3 {
+  font-size: 14px;
+}
+.agenda-client p {
+  font-size: 11px;
+  margin-top: 4px;
+}
+.agenda-card-bottom {
+  padding: 13px 20px;
+  background: #fafbfd;
+  border-top: 1px solid #f0f1f4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.agenda-payment {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.agenda-payment > strong {
+  font-size: 14px;
+}
+.agenda-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+.agenda-card-actions button {
+  font-size: 11px;
+  padding: 10px 12px;
+}
+.action-absent {
+  background: #fff4e7;
+  border-color: #f1d7b6;
+  color: #975311;
+}
+.action-absent:hover {
+  background: #fbe7ce;
+}
+.action-cancel {
+  color: #a44840;
+  background: transparent;
+  border-color: #ecd6d3;
+  margin-left: 8px;
+}
+.action-cancel:hover {
+  background: #fceeed;
+}
+@media (max-width: 760px) {
+  .agenda-list {
+    padding: 0 12px 12px;
+  }
+  .agenda-card-head {
+    padding: 16px 12px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .agenda-time {
+    padding-right: 12px;
+  }
+  .agenda-time strong {
+    font-size: 16px;
+  }
+  .agenda-client .avatar {
+    display: none;
+  }
+  .agenda-client h3 {
+    font-size: 12px;
+  }
+  .agenda-client p {
+    font-size: 10px;
+  }
+  .agenda-card-head > .badge {
+    margin-left: auto;
+  }
+  .agenda-card-bottom {
+    padding: 12px;
+  }
+  .agenda-card-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .agenda-card-actions button {
+    white-space: normal;
+    min-height: 44px;
+    padding: 9px 7px;
+    font-size: 10px;
+  }
+  .agenda-card-actions .action-cancel {
+    grid-column: 1/-1;
+    margin-left: 0;
+    justify-self: end;
+    min-width: 100px;
+  }
+}
+
+/* Agenda compacta: ações alinhadas, mantendo alvos de toque de 44px. */
+.agenda-list {
+  gap: 8px;
+  padding: 0 14px 14px;
+}
+.agenda-card-head {
+  padding: 10px 12px;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+.agenda-time {
+  padding-right: 12px;
+}
+.agenda-time strong {
+  font-size: 16px;
+}
+.agenda-client {
+  gap: 9px;
+}
+.agenda-client h3 {
+  font-size: 12px;
+}
+.agenda-client p {
+  margin-top: 2px;
+  font-size: 10px;
+}
+.agenda-card-bottom {
+  padding: 7px 12px;
+  gap: 8px;
+}
+.agenda-payment {
+  gap: 8px;
+}
+.agenda-payment > strong {
+  font-size: 12px;
+}
+.agenda-card-actions {
+  gap: 6px;
+}
+.agenda-card-actions button {
+  min-height: 44px;
+  padding: 7px 10px;
+  font-size: 11px;
+}
+.agenda-card-actions .action-cancel {
+  margin-left: 4px;
+}
+@media (max-width: 760px) {
+  .agenda-list {
+    padding: 0 10px 10px;
+  }
+  .agenda-card-head {
+    padding: 10px;
+    gap: 10px;
+  }
+  .agenda-card-head > .badge {
+    flex-shrink: 0;
+  }
+  .agenda-card-bottom {
+    padding: 7px 10px;
+  }
+  .agenda-card-actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
+    gap: 6px;
+  }
+  .agenda-card-actions button {
+    font-size: 10px;
+    padding: 6px;
+    gap: 5px;
+  }
+  .agenda-card-actions .action-cancel {
+    grid-column: auto;
+    justify-self: stretch;
+    min-width: 0;
+    margin-left: 0;
+  }
+  .agenda-card-actions button svg {
+    width: 14px;
+    height: 14px;
   }
 }

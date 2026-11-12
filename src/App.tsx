@@ -19,7 +19,6 @@ import {
   Clock,
   MessageSquare,
   ShieldCheck,
-  MoreHorizontal,
   Banknote,
   QrCode,
   CreditCard,
@@ -132,7 +131,6 @@ export default function App() {
     ),
     [toast, setToast] = useState(""),
     [campaignClient, setCampaignClient] = useState<Client | null>(null);
-  const [actionMenu, setActionMenu] = useState<number | null>(null);
   const [completionAppointment, setCompletionAppointment] =
     useState<Appointment | null>(null);
   const [message, setMessage] = useStored(
@@ -179,7 +177,6 @@ export default function App() {
   const payout = completed.reduce((s, a) => s + commission(a), 0),
     eligible = eligibleClients(clients, campaigns);
   const navigate = (p: Page) => {
-    setActionMenu(null);
     setPage(p);
     setMobile(false);
     setQuery("");
@@ -265,7 +262,6 @@ export default function App() {
     setToast("Cadastro salvo neste navegador.");
   }
   function updateStatus(a: Appointment, status: string) {
-    setActionMenu(null);
     setAppointments((items) =>
       items.map((x) => (x.id === a.id ? { ...x, status } : x)),
     );
@@ -337,133 +333,145 @@ export default function App() {
         </main>
       </div>
     );
-  const appointmentRows = (list: Appointment[], actions = false) => (
-    <div className="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Horário</th>
-            <th>Cliente / Procedimento</th>
-            {admin && <th>Profissional</th>}
-            <th>Status</th>
-            {actions && <th>Atendimento</th>}
-            <th>Pagamento</th>
-          </tr>
-        </thead>
-        <tbody>
-          {list.map((a) => (
-            <tr key={a.id}>
-              <td className="time">
-                {a.time}
+  const appointmentRows = (list: Appointment[], actions = false) =>
+    actions ? (
+      <div className="agenda-list">
+        {list.map((a) => (
+          <article
+            className="agenda-card"
+            key={a.id}
+            aria-label={`Atendimento de ${a.client} às ${a.time}`}
+          >
+            <div className="agenda-card-head">
+              <div className="agenda-time">
+                <strong>{a.time}</strong>
                 <small>{a.date.split("-").reverse().join("/")}</small>
-              </td>
-              <td>
-                <div className="person-cell">
-                  <Avatar name={a.client} />
-                  <div>
-                    <strong>{a.client}</strong>
-                    <small>{a.procedure}</small>
-                  </div>
+              </div>
+              <div className="agenda-client">
+                <Avatar name={a.client} />
+                <div>
+                  <h3>{a.client}</h3>
+                  <p>
+                    {a.procedure}
+                    {admin && <> · {a.professional}</>}
+                  </p>
                 </div>
-              </td>
-              {admin && <td>{a.professional}</td>}
-              <td>
-                <Badge text={a.status} />
-              </td>
-              {actions && (
-                <td>
-                  <div className="appointment-actions">
-                    {a.status === "Agendado" && (
-                      <button
-                        className="primary action-confirm"
-                        onClick={() => updateStatus(a, "Confirmado")}
-                      >
-                        <Check size={16} />
-                        Confirmar
-                      </button>
-                    )}
-                    {a.status === "Confirmado" && (
-                      <button
-                        className="primary action-complete"
-                        onClick={() => {
-                          setActionMenu(null);
-                          setCompletionAppointment(a);
-                        }}
-                      >
-                        <Check size={16} />
-                        Atendimento Concluído
-                      </button>
-                    )}
-                    {["Agendado", "Confirmado"].includes(a.status) && (
-                      <div
-                        className="appointment-more"
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            setActionMenu(null);
-                            e.currentTarget.querySelector("button")?.focus();
-                          }
-                        }}
-                      >
-                        <button
-                          className="icon"
-                          aria-label={`Mais opções para ${a.client} às ${a.time}`}
-                          aria-expanded={actionMenu === a.id}
-                          aria-controls={`appointment-options-${a.id}`}
-                          onClick={() =>
-                            setActionMenu(actionMenu === a.id ? null : a.id)
-                          }
-                        >
-                          <MoreHorizontal size={20} />
-                        </button>
-                        {actionMenu === a.id && (
-                          <div
-                            className="appointment-options"
-                            id={`appointment-options-${a.id}`}
-                          >
-                            <button
-                              onClick={() => updateStatus(a, "Cancelado")}
-                            >
-                              Cancelar atendimento
-                            </button>
-                            <button
-                              onClick={() => updateStatus(a, "Não compareceu")}
-                            >
-                              Não compareceu
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </td>
-              )}
-              <td>
-                <div className="payment-control">
-                  <span>{money(a.value)}</span>
-                  <Badge
-                    text={
-                      a.paymentMethod ? `Pago · ${a.paymentMethod}` : "Não pago"
-                    }
-                  />
-                  {actions && a.status === "Concluído" && (
+              </div>
+              <Badge text={a.status} />
+            </div>
+            <div className="agenda-card-bottom">
+              <div className="agenda-payment">
+                <strong>{money(a.value)}</strong>
+                <Badge
+                  text={
+                    a.paymentMethod ? `Pago · ${a.paymentMethod}` : "Não pago"
+                  }
+                />
+                {a.status === "Concluído" && (
+                  <button
+                    className="text-button"
+                    onClick={() => setCompletionAppointment(a)}
+                  >
+                    Alterar pagamento
+                  </button>
+                )}
+              </div>
+              {["Agendado", "Confirmado"].includes(a.status) && (
+                <div className="agenda-card-actions">
+                  {a.status === "Agendado" ? (
                     <button
-                      className="text-button"
-                      onClick={() => setCompletionAppointment(a)}
+                      className="primary action-confirm"
+                      onClick={() => updateStatus(a, "Confirmado")}
                     >
-                      Alterar pagamento
+                      <Check size={16} />
+                      Confirmar presença
+                    </button>
+                  ) : (
+                    <button
+                      className="secondary action-absent"
+                      onClick={() => updateStatus(a, "Não compareceu")}
+                    >
+                      <UserRound size={16} />
+                      Não compareceu
                     </button>
                   )}
+                  <button
+                    className="primary action-complete"
+                    onClick={() => setCompletionAppointment(a)}
+                  >
+                    <Check size={16} />
+                    Atendimento Concluído
+                  </button>
+                  <button
+                    className="secondary action-cancel"
+                    onClick={() => updateStatus(a, "Cancelado")}
+                  >
+                    <X size={16} />
+                    Cancelar
+                  </button>
                 </div>
-              </td>
+              )}
+            </div>
+          </article>
+        ))}
+        {!list.length && (
+          <div className="empty">Nenhum atendimento neste período.</div>
+        )}
+      </div>
+    ) : (
+      <div className="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Horário</th>
+              <th>Cliente / Procedimento</th>
+              {admin && <th>Profissional</th>}
+              <th>Status</th>
+              <th>Pagamento</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-      {!list.length && (
-        <div className="empty">Nenhum atendimento neste período.</div>
-      )}
-    </div>
-  );
+          </thead>
+          <tbody>
+            {list.map((a) => (
+              <tr key={a.id}>
+                <td className="time">
+                  {a.time}
+                  <small>{a.date.split("-").reverse().join("/")}</small>
+                </td>
+                <td>
+                  <div className="person-cell">
+                    <Avatar name={a.client} />
+                    <div>
+                      <strong>{a.client}</strong>
+                      <small>{a.procedure}</small>
+                    </div>
+                  </div>
+                </td>
+                {admin && <td>{a.professional}</td>}
+                <td>
+                  <Badge text={a.status} />
+                </td>
+
+                <td>
+                  <div className="payment-control">
+                    <span>{money(a.value)}</span>
+                    <Badge
+                      text={
+                        a.paymentMethod
+                          ? `Pago · ${a.paymentMethod}`
+                          : "Não pago"
+                      }
+                    />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!list.length && (
+          <div className="empty">Nenhum atendimento neste período.</div>
+        )}
+      </div>
+    );
   return (
     <div className="app">
       <aside className={mobile ? "sidebar open" : "sidebar"}>

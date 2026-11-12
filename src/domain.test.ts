@@ -180,7 +180,7 @@ describe("conclusão com escolha de pagamento", () => {
   });
   it("não altera o original antes da confirmação", () => {
     completeAppointment(initialAppointments[0], "Pix");
-    expect(initialAppointments[0].status).toBe("Confirmado");
+    expect(initialAppointments[0].status).toBe("Agendado");
     expect(initialAppointments[0].paymentMethod).toBeUndefined();
   });
   it.each(["Cancelado", "Não compareceu"])(
@@ -226,3 +226,6 @@ it("migra horários pendentes para Agendado e preserva os demais estados", () =>
     "Concluído",
   ]);
 });
+
+it("todos os horários demonstrativos começam como Agendado", () =>
+  expect(initialAppointments.every((a) => a.status === "Agendado")).toBe(true));

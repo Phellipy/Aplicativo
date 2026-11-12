@@ -28,3 +28,10 @@ Limites: testes automatizados concentram-se nas regras de domínio; não há su�
 - Compatibilidade com dados locais anteriores preservando formas de pagamento.
 
 Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida inspecionados no navegador sem alterar os registros de atendimento.
+
+## Cartões compactos e ações diretas
+
+- Agenda em cartões compactos com horário, cliente, profissional, status e pagamento organizados.
+- Agendado: Confirmar presença, Atendimento Concluído e Cancelar. Confirmado: Não compareceu substitui Confirmar presença.
+- Os três botões ficam na mesma linha também no celular, com alvos mínimos de 44px.
+- Todos os registros iniciais da demonstração começam em Agendado; dados existentes do navegador são preservados. Build e 30 testes aprovados antes do ajuste final de espaçamento.
