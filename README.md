@@ -175,3 +175,7 @@ Use no celular o endereço **Network** exibido pelo Vite, como `http://192.168.1
 Os dados são locais por dispositivo e endereço: abrir pelo IP da rede não compartilha automaticamente os dados de 127.0.0.1. A configuração de senha demonstrativa usa Web Crypto, disponível em localhost ou HTTPS; via IP com HTTP pode não estar disponível. Não houve teste em aparelhos físicos.
 
 Quando há somente um profissional ativo, a Agenda seleciona esse profissional automaticamente, esconde o filtro e mostra uma única coluna na Pilha. Isso vale também para Lista, Mês e Ano. Cadastros excluídos não criam colunas vazias; o histórico continua preservado nos registros e métricas. Se não houver ativos, a agenda permite consultar os cadastros não excluídos.
+
+O administrador pode alterar o nome do estabelecimento em Configurações. A marca usa as iniciais do nome, e a alteração é salva apenas neste navegador. Nos lembretes, `{estabelecimento}` insere o nome atual; textos personalizados existentes são mantidos.
+
+O catálogo de procedimentos usa linhas compactas. Em Editar procedimento, Excluir procedimento pede confirmação e remove o item do catálogo e das associações profissionais, preservando os dados dos atendimentos já cadastrados.

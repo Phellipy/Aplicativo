@@ -15,7 +15,7 @@ import {
   CalendarDays,
   Users,
   Wallet,
-  Scissors,
+  ClipboardList,
   Settings,
   UserRound,
   LogOut,
@@ -98,7 +98,7 @@ const pages: { name: Page; icon: typeof Users }[] = [
   { name: "Clientes", icon: Users },
   { name: "Financeiro", icon: Wallet },
   { name: "Profissionais", icon: UserRound },
-  { name: "Procedimentos", icon: Scissors },
+  { name: "Procedimentos", icon: ClipboardList },
   { name: "Configurações", icon: Settings },
 ];
 function useStored<T>(
@@ -141,6 +141,30 @@ function Badge({ text }: { text: string }) {
   );
 }
 export default function App() {
+  const [establishmentName, setEstablishmentName] = useStored(
+    "navalha-v01-establishment-name",
+    "Navalha & Co.",
+  );
+  const [draftName, setDraftName] = useState(establishmentName);
+  const [confirmProcedureDelete, setConfirmProcedureDelete] = useState(false);
+  const nameWords =
+    establishmentName
+      .match(/[\p{L}\p{N}]+/gu)
+      ?.filter(
+        (word) =>
+          !["e", "de", "da", "do", "das", "dos"].includes(word.toLowerCase()),
+      ) ?? [];
+  const establishmentInitials = (
+    nameWords.length > 1
+      ? nameWords
+          .slice(0, 2)
+          .map((word) => word[0])
+          .join("")
+      : (nameWords[0] ?? "E").slice(0, 2)
+  ).toLocaleUpperCase("pt-BR");
+  useEffect(() => {
+    document.title = `${establishmentName} — Gestão do seu espaço`;
+  }, [establishmentName]);
   const [role, setRole] = useState<Role | null>(null),
     [page, setPage] = useState<Page>("Dashboard"),
     [mobile, setMobile] = useState(false);
@@ -253,7 +277,7 @@ export default function App() {
     useState<Appointment | null>(null);
   const [message, setMessage] = useStored(
     "navalha-v01-message",
-    "Olá, {nome}! Sentimos sua falta na Navalha & Co. Que tal reservar um horário com a gente?",
+    "Olá, {nome}! Sentimos sua falta na {estabelecimento} Que tal reservar um horário com a gente?",
   );
   const [draftMessage, setDraftMessage] = useState(message);
   const [formError, setFormError] = useState("");
@@ -360,6 +384,7 @@ export default function App() {
     setCompletionAppointment(null);
     setRescheduleTarget(null);
     setEditingProcedure(null);
+    setConfirmProcedureDelete(false);
     setEditingClient(null);
   };
   function moveAppointment(
@@ -525,7 +550,11 @@ export default function App() {
   const whatsappAllowed = Boolean(admin && whatsappURL && !whatsappRepeat);
   function openWhatsAppPreview(client: Client) {
     whatsappClicked.current = false;
-    setWhatsappDraft(message.replaceAll("{nome}", client.name.split(" ")[0]));
+    setWhatsappDraft(
+      message
+        .replaceAll("{nome}", client.name.split(" ")[0])
+        .replaceAll("{estabelecimento}", establishmentName),
+    );
     setCampaignClient(client);
   }
   if (!role)
@@ -533,10 +562,8 @@ export default function App() {
       <div className="login">
         <div className="login-story">
           <div className="brand">
-            <span className="brand-icon">
-              <Scissors />
-            </span>
-            Navalha & Co.
+            <span className="brand-icon">{establishmentInitials}</span>
+            {establishmentName}
           </div>
           <div>
             <span className="eyebrow">SEU ESPAÇO. SEU RITMO.</span>
@@ -779,10 +806,8 @@ export default function App() {
     <div className="app">
       <aside className={mobile ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <span className="brand-icon">
-            <Scissors size={22} />
-          </span>
-          Navalha & Co.
+          <span className="brand-icon">{establishmentInitials}</span>
+          {establishmentName}
           <button
             className="icon mobile-only"
             aria-label="Fechar menu"
@@ -792,9 +817,9 @@ export default function App() {
           </button>
         </div>
         <div className="workspace">
-          <span className="workspace-mark">N</span>
+          <span className="workspace-mark">{establishmentInitials}</span>
           <div>
-            <strong>Seu estabelecimento</strong>
+            <strong>{establishmentName}</strong>
             <small>Espaço de trabalho</small>
           </div>
           <ChevronRight size={15} />
@@ -1445,7 +1470,7 @@ export default function App() {
           {page === "Procedimentos" && (
             <>
               <div className="notice">
-                <Scissors size={20} />
+                <ClipboardList size={20} />
                 <span>
                   {admin
                     ? "Cadastre e edite nome, duração e valor. As alterações valem para novos atendimentos; os anteriores preservam os dados combinados."
@@ -1465,7 +1490,7 @@ export default function App() {
                     <section className="panel procedure" key={p.id}>
                       <div className="procedure-top">
                         <span className="service-icon">
-                          <Scissors size={22} />
+                          <ClipboardList size={22} />
                         </span>
                       </div>
                       <h2>{p.name}</h2>
@@ -1515,6 +1540,41 @@ export default function App() {
           )}
           {page === "Configurações" && admin && (
             <div className="settings-grid">
+              <section className="panel settings establishment-settings">
+                <h2>Estabelecimento</h2>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (!draftName.trim()) return;
+                    setEstablishmentName(draftName.trim());
+                    setDraftName(draftName.trim());
+                    setToast("Nome do estabelecimento salvo neste navegador.");
+                  }}
+                >
+                  <label>
+                    Nome do estabelecimento
+                    <input
+                      value={draftName}
+                      onChange={(event) => setDraftName(event.target.value)}
+                      maxLength={80}
+                      required
+                    />
+                  </label>
+                  <p>
+                    As iniciais da marca são geradas automaticamente a partir do
+                    nome.
+                  </p>
+                  <button
+                    className="primary"
+                    disabled={
+                      !draftName.trim() ||
+                      draftName.trim() === establishmentName
+                    }
+                  >
+                    Salvar nome
+                  </button>
+                </form>
+              </section>
               <section className="panel settings">
                 <h2>Lembretes de retorno</h2>
                 <p>
@@ -1555,7 +1615,10 @@ export default function App() {
                     onChange={(e) => setDraftMessage(e.target.value)}
                   />
                 </label>
-                <p>Use {"{nome}"} para personalizar com o primeiro nome.</p>
+                <p>
+                  Use {"{nome}"} para o primeiro nome e {"{estabelecimento}"}{" "}
+                  para o nome da empresa.
+                </p>
                 <button
                   className="primary"
                   disabled={!draftMessage.trim()}
@@ -1571,7 +1634,9 @@ export default function App() {
                 <section className="panel settings">
                   <span className="eyebrow">PRÉ-VISUALIZAÇÃO</span>
                   <div className="message-preview">
-                    {draftMessage.replaceAll("{nome}", "Gustavo")}
+                    {draftMessage
+                      .replaceAll("{nome}", "Gustavo")
+                      .replaceAll("{estabelecimento}", establishmentName)}
                   </div>
                   <div className="notice">
                     <MessageSquare size={20} />O botão abre o WhatsApp com o
@@ -1592,7 +1657,7 @@ export default function App() {
             </div>
           )}
           <footer>
-            Navalha & Co. <span>Feito para cuidar do seu negócio.</span>
+            {establishmentName} <span>Feito para cuidar do seu negócio.</span>
             <small>
               v0.1 · Dados demonstrativos armazenados neste navegador
             </small>
@@ -1916,6 +1981,80 @@ export default function App() {
                   </label>
                 </div>
               </>
+            )}
+            {modal === "procedure" && editingProcedure && admin && (
+              <div className="procedure-delete">
+                {confirmProcedureDelete ? (
+                  <>
+                    <p>
+                      Excluir “{editingProcedure.name}” do catálogo? Os
+                      atendimentos existentes serão preservados.
+                    </p>
+                    <button
+                      type="button"
+                      className="secondary"
+                      onClick={() => setConfirmProcedureDelete(false)}
+                    >
+                      Manter procedimento
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary danger"
+                      onClick={() => {
+                        setAppointments((items) =>
+                          items.map((a) =>
+                            !a.services?.length &&
+                            a.procedure === editingProcedure.name
+                              ? {
+                                  ...a,
+                                  duration: appointmentDuration(a, procedures),
+                                  services: [
+                                    {
+                                      procedureId: editingProcedure.id,
+                                      name: a.procedure,
+                                      duration: appointmentDuration(
+                                        a,
+                                        procedures,
+                                      ),
+                                      price: a.value,
+                                      commissionRate: a.commissionRate,
+                                    },
+                                  ],
+                                }
+                              : a,
+                          ),
+                        );
+                        setRecords((items) =>
+                          items.map((record) => ({
+                            ...record,
+                            services: record.services.filter(
+                              (service) =>
+                                service.procedureId !== editingProcedure.id,
+                            ),
+                          })),
+                        );
+                        setProcedures((items) =>
+                          items.filter((p) => p.id !== editingProcedure.id),
+                        );
+                        close();
+                        setToast(
+                          "Procedimento excluído. Atendimentos preservados.",
+                        );
+                      }}
+                    >
+                      Confirmar exclusão
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="text-button danger"
+                    onClick={() => setConfirmProcedureDelete(true)}
+                  >
+                    Excluir procedimento
+                  </button>
+                )}
+              </div>
             )}
             <div className="modal-actions">
               <button type="button" className="secondary" onClick={close}>
