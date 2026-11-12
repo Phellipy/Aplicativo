@@ -1,4 +1,11 @@
 export type Role = "admin" | "professional";
+export const paymentMethods = [
+  "Dinheiro",
+  "Pix",
+  "Cartão de crédito",
+  "Cartão de débito",
+] as const;
+export type PaymentMethod = (typeof paymentMethods)[number];
 export type Appointment = {
   id: number;
   client: string;
@@ -9,6 +16,7 @@ export type Appointment = {
   value: number;
   commissionRate: number;
   status: string;
+  paymentMethod?: PaymentMethod;
 };
 export type Client = {
   id: number;
@@ -208,3 +216,19 @@ export function hasConflict(
       start + duration > minutes(a.time),
   );
 }
+
+export function recordPayment(
+  appointment: Appointment,
+  method: string,
+): Appointment {
+  if (method && !paymentMethods.includes(method as PaymentMethod))
+    throw new Error("Forma de pagamento inválida");
+  return {
+    ...appointment,
+    paymentMethod: method ? (method as PaymentMethod) : undefined,
+  };
+}
+export const receivedTotal = (appointments: Appointment[]) =>
+  appointments
+    .filter((a) => a.status === "Concluído" && a.paymentMethod)
+    .reduce((total, a) => total + a.value, 0);

@@ -1623,3 +1623,17 @@ fieldset .check-row input {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
+.appointment-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 170px;
+}
+.payment-control {
+  min-width: 180px;
+  font-size: 10px;
+  gap: 6px;
+}
+.payment-control small {
+  font-size: 10px;
+}

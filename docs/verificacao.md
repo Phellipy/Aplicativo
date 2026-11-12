@@ -8,3 +8,9 @@
 - A validação de conflito foi corrigida para aparecer dentro do modal e ser anunciada como alerta. O status na agenda do profissional foi preservado também na tela de celular.
 
 Limites: testes automatizados concentram-se nas regras de domínio; não há suíte automatizada de ponta a ponta, teste em aparelhos físicos ou backend. Os resultados não comprovam segurança ou integração externa.
+
+## Confirmação e pagamento na agenda
+
+- Build e 19 testes aprovados após a inclusão de formas de pagamento.
+- Testes cobrem as quatro formas, correção/remoção, rejeição de forma inválida e recebimento separado da confirmação/conclusão.
+- Navegador: seleção de Pix refletida no status manual de pagamento e no valor recebido do Financeiro.

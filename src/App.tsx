@@ -21,6 +21,9 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import {
+  paymentMethods,
+  recordPayment,
+  receivedTotal,
   initialAppointments,
   initialClients,
   initialProcedures,
@@ -154,7 +157,10 @@ export default function App() {
     ),
     today = scoped.filter((a) => a.date === TODAY && a.status !== "Cancelado");
   const completed = today.filter((a) => a.status === "Concluído"),
-    revenue = completed.reduce((s, a) => s + a.value, 0);
+    revenue = receivedTotal(completed);
+  const paidPayout = completed
+    .filter((a) => a.paymentMethod)
+    .reduce((s, a) => s + calculateCommission(a), 0);
   const commission = calculateCommission;
   const payout = completed.reduce((s, a) => s + commission(a), 0),
     eligible = eligibleClients(clients, campaigns);
@@ -243,8 +249,8 @@ export default function App() {
     setToast("Cadastro salvo neste navegador.");
   }
   function updateStatus(a: Appointment, status: string) {
-    setAppointments(
-      appointments.map((x) => (x.id === a.id ? { ...x, status } : x)),
+    setAppointments((items) =>
+      items.map((x) => (x.id === a.id ? { ...x, status } : x)),
     );
     if (status === "Concluído")
       setClients(
@@ -323,7 +329,8 @@ export default function App() {
             <th>Cliente / Procedimento</th>
             {admin && <th>Profissional</th>}
             <th>Status</th>
-            {actions && <th>Ação</th>}
+            {actions && <th>Atendimento</th>}
+            <th>Pagamento</th>
           </tr>
         </thead>
         <tbody>
@@ -348,24 +355,80 @@ export default function App() {
               </td>
               {actions && (
                 <td>
-                  <select
-                    aria-label={`Status de ${a.client}`}
-                    value={a.status}
-                    onChange={(e) => updateStatus(a, e.target.value)}
-                  >
-                    {[
-                      "Pendente",
-                      "Confirmado",
-                      "Em atendimento",
-                      "Concluído",
-                      "Cancelado",
-                      "Não compareceu",
-                    ].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
+                  <div className="appointment-actions">
+                    {a.status === "Pendente" && (
+                      <button
+                        className="secondary"
+                        onClick={() => updateStatus(a, "Confirmado")}
+                      >
+                        <Check size={16} /> Confirmar atendimento
+                      </button>
+                    )}
+                    <select
+                      aria-label={`Status de ${a.client}`}
+                      value={a.status}
+                      onChange={(e) => updateStatus(a, e.target.value)}
+                    >
+                      {[
+                        "Pendente",
+                        "Confirmado",
+                        "Em atendimento",
+                        "Concluído",
+                        "Cancelado",
+                        "Não compareceu",
+                      ].map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </div>
                 </td>
               )}
+              <td>
+                {actions ? (
+                  <label className="payment-control">
+                    <span>Pagamento · {money(a.value)}</span>
+                    <select
+                      aria-label={`Pagamento de ${a.client} às ${a.time}`}
+                      value={a.paymentMethod || ""}
+                      onChange={(e) => {
+                        const method = e.target.value;
+                        setAppointments((items) =>
+                          items.map((item) =>
+                            item.id === a.id
+                              ? recordPayment(item, method)
+                              : item,
+                          ),
+                        );
+                        setToast(
+                          method
+                            ? "Pagamento registrado localmente. Nenhuma transação foi processada."
+                            : "Atendimento marcado como não pago.",
+                        );
+                      }}
+                    >
+                      <option value="">Não pago</option>
+                      {paymentMethods.map((method) => (
+                        <option key={method}>{method}</option>
+                      ))}
+                    </select>
+                    <small>
+                      {a.paymentMethod
+                        ? "Pago · registro manual"
+                        : "Pagamento pendente"}
+                    </small>
+                  </label>
+                ) : (
+                  <>
+                    <Badge
+                      text={
+                        a.paymentMethod
+                          ? `Pago · ${a.paymentMethod}`
+                          : "Não pago"
+                      }
+                    />
+                  </>
+                )}
+              </td>
             </tr>
           ))}
         </tbody>
@@ -563,7 +626,7 @@ export default function App() {
                   {
                     label: admin ? "Recebido hoje" : "Meus ganhos hoje",
                     value: money(admin ? revenue : payout),
-                    note: "Atendimentos concluídos",
+                    note: "Concluídos com pagamento registrado",
                     icon: Wallet,
                   },
                   {
@@ -727,11 +790,13 @@ export default function App() {
                         ? "Saldo antes de despesas"
                         : "Meus ganhos concluídos"}
                     </span>
-                    <strong>{money(admin ? revenue - payout : payout)}</strong>
+                    <strong>
+                      {money(admin ? revenue - paidPayout : payout)}
+                    </strong>
                   </div>
                   <p>
                     {admin
-                      ? "Recebido menos repasses concluídos. Custos, taxas e despesas não estão cadastrados. Este saldo não representa lucro."
+                      ? "Recebido menos repasses dos serviços pagos. Custos, taxas e despesas não estão cadastrados. Este saldo não representa lucro."
                       : "Valores de demonstração, sem processamento de pagamentos."}
                   </p>
                 </section>
@@ -912,20 +977,22 @@ export default function App() {
               <div className="notice">
                 <Wallet size={20} />
                 <span>
-                  Valores calculados a partir de atendimentos concluídos. Não há
-                  conexão bancária, cobrança ou pagamento de repasses.
+                  Recebido considera somente atendimentos concluídos com
+                  pagamento registrado. Repasses calculados incluem todos os
+                  concluídos. Não há conexão bancária, cobrança ou pagamento de
+                  repasses.
                 </span>
               </div>
               <div className="stats finance-stats">
                 {[
                   {
-                    label: admin ? "Recebido" : "Meus serviços concluídos",
+                    label: admin ? "Recebido" : "Meus serviços pagos",
                     value: revenue,
                   },
                   { label: "Repasses calculados", value: payout },
                   {
                     label: admin ? "Saldo antes de despesas" : "Meus ganhos",
-                    value: admin ? revenue - payout : payout,
+                    value: admin ? revenue - paidPayout : payout,
                   },
                 ].map((s) => (
                   <div className="stat" key={s.label}>

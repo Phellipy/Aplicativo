@@ -24,9 +24,9 @@ O build gera `dist/`. Nenhuma credencial é necessária. Escolha **Administrador
 
 - **Login**: seleção explícita de perfil demonstrativo, sem senha ou autenticação simulada.
 - **Dashboard**: agenda do dia, indicadores derivados dos atendimentos, filtros por profissional, resumo de valores e alertas de reativação.
-- **Agenda**: lista por data e profissional, cadastro de atendimento, validação de habilitação e sobreposição de horários, mudança de status e atualização da última visita ao concluir.
+- **Agenda**: lista por data e profissional, cadastro de atendimento, validação de habilitação e sobreposição de horários, confirmação explícita do atendimento, mudança de status e atualização da última visita ao concluir. Pagamento manual por dinheiro, Pix, cartão de crédito ou cartão de débito, com opção Não pago.
 - **Clientes**: cadastro, busca por nome/telefone, última visita, registro de autorização para lembretes e fila de reativação.
-- **Financeiro**: valores de serviços concluídos, repasses e saldo antes de despesas. O saldo não é apresentado como lucro.
+- **Financeiro**: valores recebidos de serviços concluídos com pagamento registrado, repasses de todos os concluídos e saldo antes de despesas (recebido menos repasses dos serviços pagos). O saldo não é apresentado como lucro.
 - **Profissionais**: equipe demonstrativa, procedimentos habilitados e edição de percentuais de repasse individuais.
 - **Procedimentos**: cadastro de serviço com preço/duração, associação aos profissionais e percentual padrão. Valores e percentuais são fixados ao criar o atendimento; ajustes do cadastro afetam somente novos atendimentos.
 - **Configurações**: edição e prévia da mensagem de retorno, explicação do prazo e da aprovação manual.
@@ -69,3 +69,7 @@ Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram a
 5. Em Clientes, revise um lembrete e aprove na fila; recarregue e confira que não pode ser duplicado.
 6. Saia e entre como Rafael: outros profissionais, configurações e campanhas deixam de aparecer.
 7. Reduza a largura para 390px e 768px; navegue pelo menu e pelos formulários usando toque/teclado.
+
+### Registro de pagamentos na agenda
+
+Use **Confirmar atendimento** para confirmar um horário pendente. Na coluna **Pagamento**, selecione Dinheiro, Pix, Cartão de crédito ou Cartão de débito para registrar que o valor integral foi pago. A opção **Não pago** remove o registro. Confirmação, conclusão e pagamento são independentes: concluir um serviço não o marca como pago. Serviços antigos sem forma registrada aparecem como Não pago. O registro é manual e local, sem cobrança, geração de Pix, transação em cartão ou conciliação. Não há parcelamento, pagamento dividido ou parcial.

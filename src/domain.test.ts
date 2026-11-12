@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  paymentMethods,
+  recordPayment,
+  receivedTotal,
   visibleAppointments,
   initialAppointments,
   eligibleClients,
@@ -134,4 +137,34 @@ describe("agendamentos", () => {
         professionals[0],
       ),
     ).toBe(55));
+});
+
+describe("pagamentos manuais", () => {
+  it.each(paymentMethods)(
+    "registra pagamento em %s preservando o status",
+    (method) => {
+      const result = recordPayment(initialAppointments[0], method);
+      expect(result.paymentMethod).toBe(method);
+      expect(result.status).toBe(initialAppointments[0].status);
+      expect(initialAppointments[0].paymentMethod).toBeUndefined();
+    },
+  );
+  it("permite corrigir a forma e remover o registro", () => {
+    const paid = recordPayment(initialAppointments[0], "Pix");
+    expect(recordPayment(paid, "Dinheiro").paymentMethod).toBe("Dinheiro");
+    expect(recordPayment(paid, "").paymentMethod).toBeUndefined();
+  });
+  it("rejeita formas desconhecidas", () =>
+    expect(() => recordPayment(initialAppointments[0], "Boleto")).toThrow());
+  it("não confunde confirmação ou conclusão com recebimento", () => {
+    const base = initialAppointments[0];
+    expect(receivedTotal([{ ...base, status: "Concluído" }])).toBe(0);
+    expect(receivedTotal([recordPayment(base, "Pix")])).toBe(0);
+    expect(
+      receivedTotal([recordPayment({ ...base, status: "Concluído" }, "Pix")]),
+    ).toBe(base.value);
+    expect(
+      receivedTotal([recordPayment({ ...base, status: "Cancelado" }, "Pix")]),
+    ).toBe(0);
+  });
 });
