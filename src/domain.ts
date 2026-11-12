@@ -232,3 +232,12 @@ export const receivedTotal = (appointments: Appointment[]) =>
   appointments
     .filter((a) => a.status === "Concluído" && a.paymentMethod)
     .reduce((total, a) => total + a.value, 0);
+
+export function completeAppointment(
+  appointment: Appointment,
+  method: string,
+): Appointment {
+  if (["Cancelado", "Não compareceu"].includes(appointment.status))
+    throw new Error("Este atendimento não pode ser concluído");
+  return { ...recordPayment(appointment, method), status: "Concluído" };
+}

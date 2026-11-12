@@ -14,3 +14,9 @@ Limites: testes automatizados concentram-se nas regras de domínio; não há su�
 - Build e 19 testes aprovados após a inclusão de formas de pagamento.
 - Testes cobrem as quatro formas, correção/remoção, rejeição de forma inválida e recebimento separado da confirmação/conclusão.
 - Navegador: seleção de Pix refletida no status manual de pagamento e no valor recebido do Financeiro.
+
+## Janela de conclusão
+
+- 27 testes aprovados, incluindo conclusão pelas cinco opções, preservação do registro original e bloqueio de conclusão de cancelados/ausentes.
+- Janela inspecionada no navegador com cinco botões: Dinheiro, Pix, Cartão de crédito, Cartão de débito e Não pago.
+- A opção Concluído no seletor de status foi desabilitada para direcionar a conclusão ao botão e à janela.

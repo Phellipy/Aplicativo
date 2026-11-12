@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import {
   paymentMethods,
-  recordPayment,
+  completeAppointment,
   receivedTotal,
   initialAppointments,
   initialClients,
@@ -121,6 +121,8 @@ export default function App() {
     ),
     [toast, setToast] = useState(""),
     [campaignClient, setCampaignClient] = useState<Client | null>(null);
+  const [completionAppointment, setCompletionAppointment] =
+    useState<Appointment | null>(null);
   const [message, setMessage] = useStored(
     "navalha-v01-message",
     "Olá, {nome}! Sentimos sua falta na Navalha & Co. Que tal reservar um horário com a gente?",
@@ -130,7 +132,7 @@ export default function App() {
   const modalRef = useRef<HTMLDialogElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (modal || campaignClient) {
+    if (modal || campaignClient || completionAppointment) {
       setFormError("");
       lastFocus.current = document.activeElement as HTMLElement;
       modalRef.current?.showModal();
@@ -138,7 +140,7 @@ export default function App() {
       modalRef.current?.close();
       lastFocus.current?.focus();
     }
-  }, [modal, campaignClient]);
+  }, [modal, campaignClient, completionAppointment]);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(""), 5000);
@@ -173,6 +175,7 @@ export default function App() {
   const close = () => {
     setModal(null);
     setCampaignClient(null);
+    setCompletionAppointment(null);
   };
   function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -377,57 +380,42 @@ export default function App() {
                         "Cancelado",
                         "Não compareceu",
                       ].map((s) => (
-                        <option key={s}>{s}</option>
+                        <option key={s} disabled={s === "Concluído"}>
+                          {s}
+                        </option>
                       ))}
                     </select>
+                    {!["Concluído", "Cancelado", "Não compareceu"].includes(
+                      a.status,
+                    ) && (
+                      <button
+                        className="primary"
+                        onClick={() => setCompletionAppointment(a)}
+                      >
+                        <Check size={16} />
+                        Atendimento Concluído
+                      </button>
+                    )}
                   </div>
                 </td>
               )}
               <td>
-                {actions ? (
-                  <label className="payment-control">
-                    <span>Pagamento · {money(a.value)}</span>
-                    <select
-                      aria-label={`Pagamento de ${a.client} às ${a.time}`}
-                      value={a.paymentMethod || ""}
-                      onChange={(e) => {
-                        const method = e.target.value;
-                        setAppointments((items) =>
-                          items.map((item) =>
-                            item.id === a.id
-                              ? recordPayment(item, method)
-                              : item,
-                          ),
-                        );
-                        setToast(
-                          method
-                            ? "Pagamento registrado localmente. Nenhuma transação foi processada."
-                            : "Atendimento marcado como não pago.",
-                        );
-                      }}
+                <div className="payment-control">
+                  <span>{money(a.value)}</span>
+                  <Badge
+                    text={
+                      a.paymentMethod ? `Pago · ${a.paymentMethod}` : "Não pago"
+                    }
+                  />
+                  {actions && a.status === "Concluído" && (
+                    <button
+                      className="text-button"
+                      onClick={() => setCompletionAppointment(a)}
                     >
-                      <option value="">Não pago</option>
-                      {paymentMethods.map((method) => (
-                        <option key={method}>{method}</option>
-                      ))}
-                    </select>
-                    <small>
-                      {a.paymentMethod
-                        ? "Pago · registro manual"
-                        : "Pagamento pendente"}
-                    </small>
-                  </label>
-                ) : (
-                  <>
-                    <Badge
-                      text={
-                        a.paymentMethod
-                          ? `Pago · ${a.paymentMethod}`
-                          : "Não pago"
-                      }
-                    />
-                  </>
-                )}
+                      Alterar pagamento
+                    </button>
+                  )}
+                </div>
               </td>
             </tr>
           ))}
@@ -1264,19 +1252,74 @@ export default function App() {
       <dialog ref={modalRef} onCancel={close} aria-labelledby="modal-title">
         <div className="modal-head">
           <h2 id="modal-title">
-            {campaignClient
-              ? "Revisar lembrete"
-              : modal === "appointment"
-                ? "Novo atendimento"
-                : modal === "client"
-                  ? "Novo cliente"
-                  : "Novo procedimento"}
+            {completionAppointment
+              ? "Como o cliente pagou?"
+              : campaignClient
+                ? "Revisar lembrete"
+                : modal === "appointment"
+                  ? "Novo atendimento"
+                  : modal === "client"
+                    ? "Novo cliente"
+                    : "Novo procedimento"}
           </h2>
           <button className="icon" aria-label="Fechar" onClick={close}>
             <X />
           </button>
         </div>
-        {campaignClient ? (
+        {completionAppointment ? (
+          <div className="modal-body">
+            <p>
+              <strong>{completionAppointment.client}</strong>
+              <br />
+              {completionAppointment.procedure} ·{" "}
+              {money(completionAppointment.value)}
+            </p>
+            <p>
+              Escolha uma opção para concluir o atendimento e registrar o
+              pagamento integral.
+            </p>
+            <div className="payment-options">
+              {[...paymentMethods, "Não pago"].map((option) => (
+                <button
+                  key={option}
+                  className="secondary"
+                  onClick={() => {
+                    const method = option === "Não pago" ? "" : option;
+                    setAppointments((items) =>
+                      items.map((item) =>
+                        item.id === completionAppointment.id
+                          ? completeAppointment(item, method)
+                          : item,
+                      ),
+                    );
+                    setClients((items) =>
+                      items.map((client) =>
+                        client.name === completionAppointment.client &&
+                        client.lastVisit < completionAppointment.date
+                          ? { ...client, lastVisit: completionAppointment.date }
+                          : client,
+                      ),
+                    );
+                    close();
+                    setToast(
+                      option === "Não pago"
+                        ? "Atendimento concluído com pagamento pendente."
+                        : `Atendimento concluído. Pagamento em ${option} registrado manualmente.`,
+                    );
+                  }}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <small>
+              Registro demonstrativo local. Nenhuma cobrança é processada.
+            </small>
+            <button className="text-button" onClick={close}>
+              Cancelar e voltar à agenda
+            </button>
+          </div>
+        ) : campaignClient ? (
           <div className="modal-body">
             <p>
               Cliente: <strong>{campaignClient.name}</strong>

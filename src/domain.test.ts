@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   paymentMethods,
   recordPayment,
+  completeAppointment,
   receivedTotal,
   visibleAppointments,
   initialAppointments,
@@ -167,4 +168,25 @@ describe("pagamentos manuais", () => {
       receivedTotal([recordPayment({ ...base, status: "Cancelado" }, "Pix")]),
     ).toBe(0);
   });
+});
+
+describe("conclusão com escolha de pagamento", () => {
+  it.each([...paymentMethods, ""])("conclui com a opção %s", (method) => {
+    const result = completeAppointment(initialAppointments[0], method);
+    expect(result.status).toBe("Concluído");
+    expect(result.paymentMethod).toBe(method || undefined);
+    expect(receivedTotal([result])).toBe(method ? result.value : 0);
+  });
+  it("não altera o original antes da confirmação", () => {
+    completeAppointment(initialAppointments[0], "Pix");
+    expect(initialAppointments[0].status).toBe("Confirmado");
+    expect(initialAppointments[0].paymentMethod).toBeUndefined();
+  });
+  it.each(["Cancelado", "Não compareceu"])(
+    "não conclui atendimento %s",
+    (status) =>
+      expect(() =>
+        completeAppointment({ ...initialAppointments[0], status }, "Pix"),
+      ).toThrow(),
+  );
 });

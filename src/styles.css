@@ -1637,3 +1637,21 @@ fieldset .check-row input {
 .payment-control small {
   font-size: 10px;
 }
+.payment-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.payment-options button {
+  min-height: 60px;
+  white-space: normal;
+  font-size: 14px;
+}
+.payment-options button:last-child {
+  grid-column: 1/-1;
+}
+.payment-options button:hover {
+  border-color: var(--blue);
+  background: #edf4fc;
+  color: var(--blue);
+}
