@@ -1,5 +1,5 @@
 import PresenceControl from "./PresenceControl";
-import { togglePresence, type PresenceEvent } from "./presence";
+import { controlPresence, type PresenceEvent } from "./presence";
 import { createRecurringAppointments } from "./recurrence";
 import AgendaStack from "./AgendaStack";
 import MetricsPage from "./MetricsPage";
@@ -940,10 +940,21 @@ export default function App() {
               admin={admin}
               professional={currentProfessional}
               names={activeProfessionals}
+              schedules={workingSchedules}
               onToggle={(scope) => {
                 if (!admin && scope !== currentProfessional) return;
                 const now = new Date().toISOString();
-                setPresence((items) => togglePresence(items, scope, now));
+                setPresence((items) =>
+                  controlPresence(
+                    items,
+                    scope,
+                    now,
+                    workingSchedules,
+                    activeProfessionals.length === 1
+                      ? activeProfessionals[0]
+                      : undefined,
+                  ),
+                );
                 setPresenceNow(now);
                 setToast(
                   "Presença registrada no horário atual de São Paulo. Métrica de ocupação atualizada neste navegador.",

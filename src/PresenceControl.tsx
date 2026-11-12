@@ -1,7 +1,9 @@
+import type { WorkSchedule } from "./domain";
 import { useState } from "react";
 import {
   ESTABLISHMENT,
   isPresent,
+  professionalPresent,
   localMoment,
   type PresenceEvent,
 } from "./presence";
@@ -12,8 +14,10 @@ export default function PresenceControl({
   professional,
   names,
   onToggle,
+  schedules,
 }: {
   events: PresenceEvent[];
+  schedules: WorkSchedule[];
   now: string;
   admin: boolean;
   professional: string;
@@ -21,13 +25,24 @@ export default function PresenceControl({
   onToggle: (scope: string) => void;
 }) {
   const [scope, setScope] = useState(ESTABLISHMENT);
-  const target = admin
-    ? scope === ESTABLISHMENT || names.includes(scope)
-      ? scope
-      : ESTABLISHMENT
-    : professional;
-  const open = isPresent(events, target, now),
-    whole = target === ESTABLISHMENT;
+  const single = names.length === 1;
+  const target = single
+    ? names[0]
+    : admin
+      ? scope === ESTABLISHMENT || names.includes(scope)
+        ? scope
+        : ESTABLISHMENT
+      : professional;
+  const whole = target === ESTABLISHMENT;
+  const individual = whole
+    ? isPresent(events, target, now)
+    : professionalPresent(
+        events,
+        target,
+        now,
+        schedules.find((s) => s.professional === target),
+      );
+  const open = individual && (!single || isPresent(events, ESTABLISHMENT, now));
   const label = whole
     ? open
       ? "Aberto"
@@ -37,7 +52,7 @@ export default function PresenceControl({
       : "Ausente";
   return (
     <div className="presence-control">
-      {admin && (
+      {admin && !single && (
         <select
           aria-label="Controlar presença de"
           value={target}
@@ -66,12 +81,18 @@ export default function PresenceControl({
           <p>
             O botão registra o horário real de São Paulo, mesmo que a agenda
             esteja em outra data. Fechado ou ausente pausa a ocupação; reabrir
-            retoma a contagem, respeitando jornada e ausências cadastradas.
+            retoma a contagem. Em um dia fora da jornada semanal, marque
+            Presente para registrar uma presença excepcional a partir de agora.
+            Restrições manuais de ausência continuam valendo; revise-as se o
+            profissional voltou a trabalhar.
           </p>
           <p>
             Antes do primeiro fechamento, considera-se a jornada cumprida até
             aquele momento. Dias anteriores ao início dos registros usam a
-            jornada prevista. Não há sincronização entre aparelhos.
+            jornada prevista. Sair do perfil ou fechar o aplicativo não marca
+            saída: o último estado fica salvo neste navegador. Não há
+            sincronização entre aparelhos. Com um único profissional, o botão
+            controla a presença e a abertura juntos.
           </p>
           <ul>
             {events

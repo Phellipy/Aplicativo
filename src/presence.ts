@@ -1,3 +1,4 @@
+import type { WorkSchedule } from "./domain";
 export type PresenceEvent = { scope: string; at: string; open: boolean };
 export const ESTABLISHMENT = "@establishment";
 export type TimeInterval = [number, number];
@@ -23,12 +24,17 @@ export function localMoment(at: string) {
       Number(parts.second) / 60,
   };
 }
-export function isPresent(events: PresenceEvent[], scope: string, now: string) {
+export function isPresent(
+  events: PresenceEvent[],
+  scope: string,
+  now: string,
+  fallback = true,
+) {
   const last = events
     .filter((e) => e.scope === scope && e.at <= now)
     .sort((a, b) => a.at.localeCompare(b.at))
     .at(-1);
-  return last?.open ?? true;
+  return last?.open ?? fallback;
 }
 export function togglePresence(
   events: PresenceEvent[],
@@ -97,4 +103,78 @@ export function presenceAvailability(
     ),
     tracked: establishment.tracked || person.tracked,
   };
+}
+
+export function professionalPresent(
+  events: PresenceEvent[],
+  name: string,
+  now: string,
+  schedule?: WorkSchedule,
+) {
+  const day = localMoment(now).date;
+  const enabled =
+    schedule?.days.find(
+      (d) => d.day === new Date(`${day}T12:00:00Z`).getUTCDay(),
+    )?.enabled ?? false;
+  return isPresent(
+    enabled ? events : events.filter((e) => localMoment(e.at).date === day),
+    name,
+    now,
+    enabled,
+  );
+}
+export function controlPresence(
+  events: PresenceEvent[],
+  scope: string,
+  now: string,
+  schedules: WorkSchedule[],
+  soleProfessional?: string,
+) {
+  const open =
+    scope === ESTABLISHMENT
+      ? isPresent(events, scope, now)
+      : professionalPresent(
+          events,
+          scope,
+          now,
+          schedules.find((s) => s.professional === scope),
+        );
+  const effective =
+    scope === soleProfessional
+      ? open && isPresent(events, ESTABLISHMENT, now)
+      : open;
+  const scopes = scope === soleProfessional ? [scope, ESTABLISHMENT] : [scope];
+  return [
+    ...events,
+    ...scopes.map((target) => ({ scope: target, at: now, open: !effective })),
+  ];
+}
+// An exceptional off-day requires an explicit arrival on that date.
+export function exceptionalPresenceIntervals(
+  events: PresenceEvent[],
+  name: string,
+  day: string,
+  now: string,
+): TimeInterval[] {
+  if (day > localMoment(now).date) return [];
+  const entries = events
+    .filter(
+      (e) => e.scope === name && e.at <= now && localMoment(e.at).date === day,
+    )
+    .sort((a, b) => a.at.localeCompare(b.at));
+  let start: number | null = null;
+  const intervals: TimeInterval[] = [];
+  for (const entry of entries) {
+    const minute = localMoment(entry.at).minute;
+    if (entry.open && start === null) start = minute;
+    if (!entry.open && start !== null) {
+      if (minute > start) intervals.push([start, minute]);
+      start = null;
+    }
+  }
+  if (start !== null) {
+    const end = day === localMoment(now).date ? localMoment(now).minute : 1440;
+    if (end > start) intervals.push([start, end]);
+  }
+  return intervals;
 }

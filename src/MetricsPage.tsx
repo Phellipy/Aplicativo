@@ -171,10 +171,12 @@ export default function MetricsPage({
           concluídos dentro da jornada disponível ÷ tempo disponível da equipe.
           Descontamos ausências e não contamos sobreposições duas vezes. O tempo
           atendido é estimado pela duração cadastrada dos serviços, sem
-          cronômetro. A jornada atual é aplicada ao período consultado.
-          Fechamentos e saídas interrompem a disponibilidade; reaberturas e
-          chegadas retomam a contagem. Nos dias com controle de presença,
-          contamos somente até agora.{" "}
+          cronômetro. A jornada atual é aplicada ao período consultado. Chegadas
+          em dias fora da jornada semanal contam como presença excepcional a
+          partir do registro, mantendo os bloqueios manuais. Fechamentos e
+          saídas interrompem a disponibilidade; reaberturas e chegadas retomam a
+          contagem. Nos dias com controle de presença, contamos somente até
+          agora.{" "}
           {report.occupation.scheduledDays > 0
             ? "Este período inclui dias sem registros, calculados pela jornada prevista (inclusive datas futuras ainda sem controle iniciado)."
             : "Este período usa o controle de presença."}{" "}

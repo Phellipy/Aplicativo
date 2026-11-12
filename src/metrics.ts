@@ -1,4 +1,8 @@
-import { presenceAvailability, type PresenceEvent } from "./presence";
+import {
+  presenceAvailability,
+  exceptionalPresenceIntervals,
+  type PresenceEvent,
+} from "./presence";
 import {
   appointmentDuration,
   calculateCommission,
@@ -33,14 +37,16 @@ type Interval = [number, number];
 function availableIntervals(
   schedule: WorkSchedule | undefined,
   date: string,
+  exceptional: Interval[] = [],
 ): Interval[] {
   if (!schedule) return [];
   const day = schedule.days.find(
     (d) => d.day === new Date(`${date}T12:00:00Z`).getUTCDay(),
   );
-  if (!day?.enabled || timeMinutes(day.end) <= timeMinutes(day.start))
-    return [];
-  let intervals: Interval[] = [[timeMinutes(day.start), timeMinutes(day.end)]];
+  let intervals: Interval[] =
+    day?.enabled && timeMinutes(day.end) > timeMinutes(day.start)
+      ? [[timeMinutes(day.start), timeMinutes(day.end)]]
+      : exceptional;
   for (const restriction of schedule.restrictions.filter(
     (r) => r.date === date,
   )) {
@@ -117,7 +123,11 @@ export function occupationStats(
   }
   for (const day of dates)
     for (const name of nameSet) {
-      const scheduled = availableIntervals(scheduleByName.get(name), day);
+      const scheduled = availableIntervals(
+        scheduleByName.get(name),
+        day,
+        exceptionalPresenceIntervals(presence, name, day, now),
+      );
       const actual = presenceAvailability(scheduled, presence, name, day, now);
       const availability = actual.intervals;
       if (scheduled.length) {

@@ -84,3 +84,5 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 Recorrência semanal: build aprovado e 121 testes passando. Os 11 novos casos cobrem múltiplos dias, limites de período, virada de ano, IDs únicos, soma dos serviços e bloqueio integral em conflitos/ausências. Todas as ocorrências são materializadas no armazenamento local; não existe tarefa automática em segundo plano.
 
 Controle de presença: testes com relógio fixo de São Paulo cobrem fechamento, saída/retorno, interseção entre estabelecimento e profissional, virada de dia, limite até o momento atual, fallback histórico explícito, jornadas/ausências e preservação dos indicadores financeiros. Controles são demonstrativos e locais.
+
+Profissional único: botão unificado sincroniza presença e abertura, sem seletor. Presença em folga exige chegada explícita na data, conta intervalos de saída/retorno, não herda presença do dia anterior e mantém restrições manuais. Serialização dos eventos preserva o estado. Build aprovado e 139 testes passando.

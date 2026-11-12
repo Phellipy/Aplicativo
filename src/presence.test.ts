@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  controlPresence,
+  professionalPresent,
   ESTABLISHMENT,
   isPresent,
   localMoment,
@@ -209,6 +211,148 @@ describe("controle de presença", () => {
         day,
         [],
         now,
+      ).availableMinutes,
+    ).toBe(0);
+  });
+});
+
+describe("profissional único e presença em dia de folga", () => {
+  const sunday = "2026-11-15";
+  const schedule = defaultSchedule(professional);
+  const arrive = new Date(at("10:00", sunday)).toISOString();
+  const leave = new Date(at("12:00", sunday)).toISOString();
+  const reference = new Date(at("15:00", sunday)).toISOString();
+  it("inicia ausente na folga e registra chegada explicitamente", () => {
+    expect(professionalPresent([], professional, arrive, schedule)).toBe(false);
+    const events = controlPresence([], professional, arrive, [schedule]);
+    expect(events[0].open).toBe(true);
+    expect(professionalPresent(events, professional, reference, schedule)).toBe(
+      true,
+    );
+    expect(
+      occupationStats(
+        [],
+        [],
+        [schedule],
+        [professional],
+        "day",
+        sunday,
+        events,
+        reference,
+      ).availableMinutes,
+    ).toBe(300);
+  });
+  it("encerra presença excepcional na saída e preserva pausas", () => {
+    let events = controlPresence([], professional, arrive, [schedule]);
+    events = controlPresence(events, professional, leave, [schedule]);
+    events = controlPresence(
+      events,
+      professional,
+      new Date(at("14:00", sunday)).toISOString(),
+      [schedule],
+    );
+    expect(
+      occupationStats(
+        [],
+        [],
+        [schedule],
+        [professional],
+        "day",
+        sunday,
+        events,
+        reference,
+      ).availableMinutes,
+    ).toBe(180);
+  });
+  it("não presume trabalho no domingo por chegada no sábado", () => {
+    const events = [event(professional, "10:00", true, "2026-11-14")];
+    expect(professionalPresent(events, professional, reference, schedule)).toBe(
+      false,
+    );
+    expect(
+      occupationStats(
+        [],
+        [],
+        [schedule],
+        [professional],
+        "day",
+        sunday,
+        events,
+        reference,
+      ).availableMinutes,
+    ).toBe(0);
+  });
+  it("profissional único sincroniza o estabelecimento sem seletor nem bloqueio oculto", () => {
+    const events = [event(ESTABLISHMENT, "09:00", false)];
+    const reopened = controlPresence(
+      events,
+      professional,
+      new Date(at("10:00")).toISOString(),
+      [schedule],
+      professional,
+    );
+    expect(isPresent(reopened, professional, now)).toBe(true);
+    expect(isPresent(reopened, ESTABLISHMENT, now)).toBe(true);
+    const closed = controlPresence(
+      reopened,
+      professional,
+      new Date(at("14:00")).toISOString(),
+      [schedule],
+      professional,
+    );
+    expect(isPresent(closed, professional, now)).toBe(false);
+    expect(isPresent(closed, ESTABLISHMENT, now)).toBe(false);
+  });
+  it("mantém registros e estado após serializar para armazenamento", () => {
+    const events = controlPresence(
+      [],
+      professional,
+      arrive,
+      [schedule],
+      professional,
+    );
+    const reloaded = JSON.parse(JSON.stringify(events));
+    expect(
+      professionalPresent(reloaded, professional, reference, schedule),
+    ).toBe(true);
+    expect(
+      occupationStats(
+        [],
+        [],
+        [schedule],
+        [professional],
+        "day",
+        sunday,
+        reloaded,
+        reference,
+      ).availableMinutes,
+    ).toBe(300);
+  });
+  it("respeita bloqueio manual mesmo na chegada excepcional", () => {
+    const blocked = {
+      ...schedule,
+      restrictions: [
+        {
+          id: 1,
+          date: sunday,
+          start: "00:00",
+          end: "23:59",
+          allDay: true,
+          reason: "Ausência",
+        },
+      ],
+    };
+    const events = controlPresence([], professional, arrive, [blocked]);
+    expect(
+      occupationStats(
+        [],
+        [],
+        [blocked],
+        [professional],
+        "day",
+        sunday,
+        events,
+        reference,
       ).availableMinutes,
     ).toBe(0);
   });
