@@ -61,6 +61,8 @@ describe("ocupação realizada", () => {
       availableMinutes: 480,
       occupiedMinutes: 120,
       rate: 25,
+      trackedDays: 0,
+      scheduledDays: 1,
     });
   });
   it("não conta sobreposições duas vezes", () => {

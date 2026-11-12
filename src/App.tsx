@@ -1,3 +1,5 @@
+import PresenceControl from "./PresenceControl";
+import { togglePresence, type PresenceEvent } from "./presence";
 import { createRecurringAppointments } from "./recurrence";
 import AgendaStack from "./AgendaStack";
 import MetricsPage from "./MetricsPage";
@@ -166,6 +168,20 @@ export default function App() {
   useEffect(() => {
     document.title = `${establishmentName} — Gestão do seu espaço`;
   }, [establishmentName]);
+  const [presence, setPresence] = useStored<PresenceEvent[]>(
+    "navalha-v01-presence",
+    [],
+  );
+  const [presenceNow, setPresenceNow] = useState(() =>
+    new Date().toISOString(),
+  );
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setPresenceNow(new Date().toISOString()),
+      30000,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
   const [role, setRole] = useState<Role | null>(null),
     [page, setPage] = useState<Page>("Dashboard"),
     [mobile, setMobile] = useState(false);
@@ -353,6 +369,8 @@ export default function App() {
           : [currentProfessional],
         dashboardPeriod,
         dashboardDate,
+        presence,
+        presenceNow,
       ),
     [
       appointments,
@@ -364,6 +382,8 @@ export default function App() {
       currentProfessional,
       dashboardPeriod,
       dashboardDate,
+      presence,
+      presenceNow,
     ],
   );
   const completed = today.filter((a) => a.status === "Concluído"),
@@ -914,7 +934,22 @@ export default function App() {
             </span>
           </div>
           <div>
-            <span className="demo-tag">DEMONSTRAÇÃO</span>
+            <PresenceControl
+              events={presence}
+              now={presenceNow}
+              admin={admin}
+              professional={currentProfessional}
+              names={activeProfessionals}
+              onToggle={(scope) => {
+                if (!admin && scope !== currentProfessional) return;
+                const now = new Date().toISOString();
+                setPresence((items) => togglePresence(items, scope, now));
+                setPresenceNow(now);
+                setToast(
+                  "Presença registrada no horário atual de São Paulo. Métrica de ocupação atualizada neste navegador.",
+                );
+              }}
+            />
             <button
               className="icon"
               aria-label="Ver alertas de demonstração"
@@ -1051,9 +1086,12 @@ export default function App() {
                 ))}
               </div>
               <p className="occupancy-caption">
-                Ocupação calculada pela duração dos serviços concluídos dentro
-                da jornada, descontando ausências. Agendamentos futuros não
-                contam como tempo atendido.
+                Serviços concluídos ÷ tempo disponível, respeitando jornada,
+                ausências e registros de presença.{" "}
+                {occupancy.scheduledDays > 0
+                  ? "Há dias sem registros: usamos a jornada prevista como referência."
+                  : "Base limitada ao tempo de presença registrado até agora."}{" "}
+                Agendamentos futuros não contam como tempo atendido.
               </p>
               <div className="dashboard-grid">
                 <section
@@ -1442,6 +1480,8 @@ export default function App() {
               procedures={procedures}
               schedules={workingSchedules}
               names={professionals}
+              presence={presence}
+              now={presenceNow}
             />
           )}
           {page === "Profissionais" && admin && (

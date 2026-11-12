@@ -82,3 +82,5 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Mensagens nunca são marcadas como enviadas. A proteção local registra somente a solicitação de abertura; não existe retorno de entrega ou confirmação de envio.
 
 Recorrência semanal: build aprovado e 121 testes passando. Os 11 novos casos cobrem múltiplos dias, limites de período, virada de ano, IDs únicos, soma dos serviços e bloqueio integral em conflitos/ausências. Todas as ocorrências são materializadas no armazenamento local; não existe tarefa automática em segundo plano.
+
+Controle de presença: testes com relógio fixo de São Paulo cobrem fechamento, saída/retorno, interseção entre estabelecimento e profissional, virada de dia, limite até o momento atual, fallback histórico explícito, jornadas/ausências e preservação dos indicadores financeiros. Controles são demonstrativos e locais.

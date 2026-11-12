@@ -3787,3 +3787,91 @@ fieldset .check-row input {
   font-size: 8px;
   line-height: 8px;
 }
+
+.presence-control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  min-width: 0;
+}
+.presence-control > select {
+  width: 150px;
+  min-height: 36px;
+  padding: 6px;
+  font-size: 11px;
+}
+.presence-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.presence-toggle > span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.presence-toggle.is-open {
+  background: #eef7ef;
+  color: #326747;
+  border-color: #cce2d1;
+}
+.presence-toggle.is-closed {
+  background: #f5f1ef;
+  color: #835147;
+  border-color: #e7d8d2;
+}
+.presence-history summary {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  min-height: 40px;
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--muted);
+}
+.presence-history > div {
+  position: absolute;
+  top: 46px;
+  right: 0;
+  width: min(340px, calc(100vw - 24px));
+  padding: 16px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 25px #18385026;
+  z-index: 30;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.presence-history ul {
+  padding-left: 16px;
+}
+@media (max-width: 600px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px;
+    height: auto;
+    min-height: 72px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .topbar > div:last-child {
+    margin-left: auto;
+    gap: 6px;
+  }
+  .presence-control > select {
+    width: 115px;
+  }
+  .presence-toggle {
+    padding: 8px;
+  }
+}

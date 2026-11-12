@@ -1,3 +1,4 @@
+import { presenceAvailability, type PresenceEvent } from "./presence";
 import {
   appointmentDuration,
   calculateCommission,
@@ -88,9 +89,13 @@ export function occupationStats(
   names: string[],
   period: MetricsPeriod,
   date: string,
+  presence: PresenceEvent[] = [],
+  now = new Date().toISOString(),
 ) {
   let availableMinutes = 0,
-    occupiedMinutes = 0;
+    occupiedMinutes = 0,
+    trackedDays = 0,
+    scheduledDays = 0;
   const dates = reportDates(period, date),
     dateSet = new Set(dates),
     nameSet = new Set(names);
@@ -112,7 +117,13 @@ export function occupationStats(
   }
   for (const day of dates)
     for (const name of nameSet) {
-      const availability = availableIntervals(scheduleByName.get(name), day);
+      const scheduled = availableIntervals(scheduleByName.get(name), day);
+      const actual = presenceAvailability(scheduled, presence, name, day, now);
+      const availability = actual.intervals;
+      if (scheduled.length) {
+        if (actual.tracked) trackedDays++;
+        else scheduledDays++;
+      }
       availableMinutes += availability.reduce(
         (sum, [start, end]) => sum + end - start,
         0,
@@ -133,6 +144,8 @@ export function occupationStats(
   return {
     availableMinutes,
     occupiedMinutes,
+    trackedDays,
+    scheduledDays,
     rate: availableMinutes ? (occupiedMinutes / availableMinutes) * 100 : null,
   };
 }
@@ -151,6 +164,8 @@ export function metricsReport(
   names: string[],
   period: MetricsPeriod,
   date: string,
+  presence: PresenceEvent[] = [],
+  now = new Date().toISOString(),
 ) {
   const dates = reportDates(period, date),
     set = new Set(dates),
@@ -313,10 +328,21 @@ export function metricsReport(
     names,
     period,
     date,
+    presence,
+    now,
   );
   const professionals = names.map((name) => ({
     name,
-    ...occupationStats(items, procedures, schedules, [name], period, date),
+    ...occupationStats(
+      items,
+      procedures,
+      schedules,
+      [name],
+      period,
+      date,
+      presence,
+      now,
+    ),
   }));
   return {
     items,

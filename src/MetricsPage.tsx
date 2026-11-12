@@ -1,3 +1,4 @@
+import type { PresenceEvent } from "./presence";
 import { useMemo, useState } from "react";
 import {
   TODAY,
@@ -20,12 +21,16 @@ type Props = {
   procedures: Procedure[];
   schedules: WorkSchedule[];
   names: string[];
+  presence: PresenceEvent[];
+  now: string;
 };
 export default function MetricsPage({
   appointments,
   procedures,
   schedules,
   names,
+  presence,
+  now,
 }: Props) {
   const [period, setPeriod] = useState<MetricsPeriod>("month"),
     [date, setDate] = useState(TODAY),
@@ -40,8 +45,20 @@ export default function MetricsPage({
         selectedNames,
         period,
         date,
+        presence,
+        now,
       ),
-    [appointments, procedures, schedules, names, person, period, date],
+    [
+      appointments,
+      procedures,
+      schedules,
+      names,
+      person,
+      period,
+      date,
+      presence,
+      now,
+    ],
   );
   const days = reportDates(period, date),
     range = days.length
@@ -154,8 +171,15 @@ export default function MetricsPage({
           concluídos dentro da jornada disponível ÷ tempo disponível da equipe.
           Descontamos ausências e não contamos sobreposições duas vezes. O tempo
           atendido é estimado pela duração cadastrada dos serviços, sem
-          cronômetro. A jornada atual é aplicada ao período consultado. A
-          disponibilidade inclui todo o período, inclusive dias futuros.
+          cronômetro. A jornada atual é aplicada ao período consultado.
+          Fechamentos e saídas interrompem a disponibilidade; reaberturas e
+          chegadas retomam a contagem. Nos dias com controle de presença,
+          contamos somente até agora.{" "}
+          {report.occupation.scheduledDays > 0
+            ? "Este período inclui dias sem registros, calculados pela jornada prevista (inclusive datas futuras ainda sem controle iniciado)."
+            : "Este período usa o controle de presença."}{" "}
+          Os registros usam o horário real de São Paulo, independentemente da
+          data demonstrativa da agenda.
         </span>
       </div>
       <div className="metrics-grid">
