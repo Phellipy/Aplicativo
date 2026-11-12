@@ -202,3 +202,13 @@ Com **apenas um profissional ativo**, o seletor do topo desaparece: um único bo
 Configurações do administrador agora têm três abas: **Estabelecimento**, **Lembrete de Agendamento** e **Lembrete de Retorno**. Cada mensagem é salva separadamente. O lembrete de agendamento aceita `{nome}`, `{estabelecimento}`, `{data}`, `{horario}`, `{profissional}` e `{procedimentos}`.
 
 Na Agenda (lista e pilha), o ícone do WhatsApp abre a conversa com a mensagem pronta para o atendimento selecionado, inclusive antes do dia caso necessário. Exige telefone válido e autorização do cliente registrada no cadastro. Não há disparo automático. Após abrir, o ícone fica discreto e mantém o link para nova abertura; a indicação é **Lembrete aberto**, nunca comprovante de envio/leitura. O estado fica salvo neste navegador. Reagendar, trocar os procedimentos, telefone ou texto faz o ícone voltar a ficar destacado. Cancelados, faltas, clientes excluídos e dados incompletos apresentam o motivo de indisponibilidade. A proteção de sete dias permanece exclusiva dos lembretes de retorno; reabrir o lembrete de agendamento é permitido.
+
+### Aparência e logo
+
+Em **Configurações → Estabelecimento**, escolha modo Claro/Escuro e a cor principal dos botões: azul, rosa, roxo, preto, branco, cinza, marrom ou laranja. As alterações são imediatas e ficam salvas no navegador; status e WhatsApp preservam suas cores semânticas. Os textos dos botões têm contraste mínimo de 4,5:1. A impressão das métricas mantém fundo claro.
+
+A logo opcional aparece na tela de acesso. Aceita PNG/JPEG/WebP de até 2 MB, redimensionados para até 512 px antes de armazenar localmente. É possível substituir ou remover; sem logo, aparecem as iniciais. Não existe upload para servidor ou compartilhamento entre aparelhos.
+
+### Pagamento posterior
+
+Atendimentos concluídos como Não pago continuam com a opção **Registrar / alterar pagamento** na Agenda. No Início, clique no status de pagamento da tabela; no Financeiro, clique em **Não pago · Alterar** (ou na forma já registrada). Escolha dinheiro, Pix, crédito, débito ou Não pago. O mesmo atendimento é atualizado, sem duplicação. O recebimento integral continua associado à data do atendimento nesta versão, sem conciliação por data efetiva de pagamento ou pagamentos parciais.

@@ -1,3 +1,8 @@
+import {
+  applyAppearance,
+  normalizeAppearance,
+  type Appearance,
+} from "./appearance";
 import SettingsPage from "./SettingsPage";
 import AppointmentReminderLink from "./AppointmentReminderLink";
 import {
@@ -189,6 +194,19 @@ export default function App() {
     );
     return () => window.clearInterval(timer);
   }, []);
+  const [appearance, setAppearance] = useStored<Appearance>(
+    "navalha-v01-appearance",
+    { mode: "light", accent: "blue" },
+    normalizeAppearance,
+  );
+  useEffect(() => applyAppearance(appearance), [appearance]);
+  const [logo, setLogo] = useStored<string>("navalha-v01-logo", "", (value) =>
+    typeof value === "string" &&
+    /^data:image\/(png|webp|jpeg);base64,/.test(value) &&
+    value.length <= 700000
+      ? value
+      : "",
+  );
   const [role, setRole] = useState<Role | null>(null),
     [page, setPage] = useState<Page>("Dashboard"),
     [mobile, setMobile] = useState(false);
@@ -617,7 +635,15 @@ export default function App() {
       <div className="login">
         <div className="login-story">
           <div className="brand">
-            <span className="brand-icon">{establishmentInitials}</span>
+            {logo ? (
+              <img
+                className="login-logo"
+                src={logo}
+                alt={`Logo de ${establishmentName}`}
+              />
+            ) : (
+              <span className="brand-icon">{establishmentInitials}</span>
+            )}
             {establishmentName}
           </div>
           <div>
@@ -766,7 +792,9 @@ export default function App() {
                     className="text-button"
                     onClick={() => setCompletionAppointment(a)}
                   >
-                    Alterar pagamento
+                    {a.paymentMethod
+                      ? "Alterar pagamento"
+                      : "Registrar / alterar pagamento"}
                   </button>
                 )}
               </div>
@@ -856,13 +884,24 @@ export default function App() {
                 <td>
                   <div className="payment-control">
                     <span>{money(a.value)}</span>
-                    <Badge
-                      text={
-                        a.paymentMethod
-                          ? `Pago · ${a.paymentMethod}`
-                          : "Não pago"
-                      }
-                    />
+                    {a.status === "Concluído" ? (
+                      <button
+                        className="payment-status-trigger"
+                        title="Registrar ou alterar pagamento"
+                        aria-label={`Alterar pagamento de ${a.client}`}
+                        onClick={() => setCompletionAppointment(a)}
+                      >
+                        <Badge
+                          text={
+                            a.paymentMethod
+                              ? `Pago · ${a.paymentMethod}`
+                              : "Não pago"
+                          }
+                        />
+                      </button>
+                    ) : (
+                      <Badge text="Não pago" />
+                    )}
                   </div>
                 </td>
               </tr>
@@ -1477,6 +1516,11 @@ export default function App() {
               clients={clients}
               establishmentName={establishmentName}
               admin={admin}
+              onPayment={(id) => {
+                const appointment = visible.find((a) => a.id === id);
+                if (appointment?.status === "Concluído")
+                  setCompletionAppointment(appointment);
+              }}
             />
           )}
           {page === "Métricas" && admin && (
@@ -1610,6 +1654,25 @@ export default function App() {
               name={establishmentName}
               message={message}
               appointmentTemplate={appointmentTemplate}
+              appearance={appearance}
+              logo={logo}
+              onLogo={(value) => {
+                try {
+                  localStorage.setItem(
+                    "navalha-v01-logo",
+                    JSON.stringify(value),
+                  );
+                } catch {
+                  throw new Error(
+                    "Sem espaço neste navegador para salvar a logo. Tente uma imagem menor.",
+                  );
+                }
+                setLogo(value);
+                setToast(
+                  value ? "Logo salva neste navegador." : "Logo removida.",
+                );
+              }}
+              onAppearance={setAppearance}
               onName={(value) => {
                 setEstablishmentName(value);
                 setToast("Nome do estabelecimento salvo neste navegador.");
@@ -1638,7 +1701,9 @@ export default function App() {
             {rescheduleTarget
               ? "Reagendar atendimento"
               : completionAppointment
-                ? "Como o cliente pagou?"
+                ? completionAppointment.status === "Concluído"
+                  ? "Alterar pagamento"
+                  : "Como o cliente pagou?"
                 : campaignClient
                   ? "Revisar mensagem do WhatsApp"
                   : modal === "appointment"
@@ -1714,8 +1779,9 @@ export default function App() {
               {money(completionAppointment.value)}
             </p>
             <p>
-              Escolha uma opção para concluir o atendimento e registrar o
-              pagamento integral.
+              {completionAppointment.status === "Concluído"
+                ? "Atualize a forma de pagamento deste atendimento. O valor será registrado integralmente, sem criar outro atendimento."
+                : "Escolha uma opção para concluir o atendimento e registrar o pagamento integral."}
             </p>
             <div className="payment-options">
               {[...paymentMethods, "Não pago"].map((option) => (

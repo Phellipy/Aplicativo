@@ -13,11 +13,13 @@ export default function FinancePage({
   clients,
   establishmentName,
   admin,
+  onPayment,
 }: {
   appointments: Appointment[];
   clients: Client[];
   establishmentName: string;
   admin: boolean;
+  onPayment: (id: number) => void;
 }) {
   const [period, setPeriod] = useState<Period>("day"),
     [date, setDate] = useState(TODAY),
@@ -148,7 +150,16 @@ export default function FinancePage({
                   <td>{row.professional}</td>
                   <td>{row.procedure}</td>
                   <td>{money(row.value)}</td>
-                  <td>{row.payment}</td>
+                  <td>
+                    <button
+                      className="payment-status-trigger"
+                      title="Registrar ou alterar pagamento"
+                      aria-label={`Alterar pagamento de ${row.client}`}
+                      onClick={() => onPayment(row.appointmentId)}
+                    >
+                      {row.payment} <small>· Alterar</small>
+                    </button>
+                  </td>
                   <td>{money(row.received)}</td>
                   <td>{money(row.pending)}</td>
                   <td>{money(row.payout)}</td>

@@ -1,3 +1,6 @@
+import LogoSettings from "./LogoSettings";
+import AppearanceSettings from "./AppearanceSettings";
+import type { Appearance } from "./appearance";
 import { useState } from "react";
 import { appointmentMessage } from "./appointmentReminder";
 import { initialAppointments } from "./domain";
@@ -5,10 +8,18 @@ export default function SettingsPage({
   name,
   message,
   appointmentTemplate,
+  logo,
+  onLogo,
+  appearance,
+  onAppearance,
   onName,
   onReturn,
   onAppointment,
 }: {
+  logo: string;
+  onLogo: (value: string) => void;
+  appearance: Appearance;
+  onAppearance: (next: Appearance) => void;
   name: string;
   message: string;
   appointmentTemplate: string;
@@ -93,6 +104,8 @@ export default function SettingsPage({
                 Salvar nome
               </button>
             </form>
+            <LogoSettings logo={logo} name={name} onSave={onLogo} />
+            <AppearanceSettings value={appearance} onChange={onAppearance} />
             <div className="notice">
               Versão 0.1 · Dados demonstrativos locais. O controle de perfil não
               oferece segurança real e não há sincronização entre aparelhos.

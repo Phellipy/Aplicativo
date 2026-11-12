@@ -21,6 +21,7 @@ export function financeRows(
       const received = a.paymentMethod ? a.value : 0;
       const payout = calculateCommission(a);
       return {
+        appointmentId: a.id,
         date: a.date,
         time: a.time,
         client: a.client,

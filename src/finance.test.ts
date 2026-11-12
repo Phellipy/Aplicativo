@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { financeRows, financeWorkbook } from "./finance";
 import {
+  completeAppointment,
   saveClient,
   periodDates,
   periodLabel,
@@ -151,4 +152,20 @@ describe("semana no início e financeiro", () => {
       ),
     ).toHaveLength(2);
   });
+});
+
+it("registra pagamento posterior sem duplicar serviço ou alterar data e valor", () => {
+  const pending = completeAppointment(appointment, "");
+  expect(
+    financeRows([pending], [client], "day", appointment.date)[0].pending,
+  ).toBe(100);
+  const paid = completeAppointment(pending, "Cartão de débito");
+  expect(paid.id).toBe(pending.id);
+  expect(paid.date).toBe(pending.date);
+  expect(paid.value).toBe(pending.value);
+  const rows = financeRows([paid], [client], "day", appointment.date);
+  expect(rows).toHaveLength(1);
+  expect(rows[0].received).toBe(100);
+  expect(rows[0].pending).toBe(0);
+  expect(rows[0].payment).toBe("Cartão de débito");
 });
