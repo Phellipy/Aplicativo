@@ -1,3 +1,4 @@
+import AgendaStack from "./AgendaStack";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   LayoutDashboard,
@@ -25,7 +26,8 @@ import {
   CircleAlert,
 } from "lucide-react";
 import {
-  agendaHours,
+  rescheduleAppointment,
+  canReschedule,
   agendaStatusTone,
   paymentMethods,
   normalizeAppointments,
@@ -140,6 +142,9 @@ export default function App() {
   const [expandedAppointment, setExpandedAppointment] = useState<number | null>(
     null,
   );
+  const [rescheduleTarget, setRescheduleTarget] = useState<Appointment | null>(
+    null,
+  );
   const [completionAppointment, setCompletionAppointment] =
     useState<Appointment | null>(null);
   const [message, setMessage] = useStored(
@@ -151,7 +156,7 @@ export default function App() {
   const modalRef = useRef<HTMLDialogElement>(null);
   const lastFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (modal || campaignClient || completionAppointment) {
+    if (modal || campaignClient || completionAppointment || rescheduleTarget) {
       setFormError("");
       lastFocus.current = document.activeElement as HTMLElement;
       modalRef.current?.showModal();
@@ -159,7 +164,7 @@ export default function App() {
       modalRef.current?.close();
       lastFocus.current?.focus();
     }
-  }, [modal, campaignClient, completionAppointment]);
+  }, [modal, campaignClient, completionAppointment, rescheduleTarget]);
   useEffect(() => {
     if (toast) {
       const t = setTimeout(() => setToast(""), 5000);
@@ -195,7 +200,38 @@ export default function App() {
     setModal(null);
     setCampaignClient(null);
     setCompletionAppointment(null);
+    setRescheduleTarget(null);
   };
+  function moveAppointment(
+    appointment: Appointment,
+    newDate: string,
+    newTime: string,
+  ) {
+    try {
+      if (!role) return false;
+      const updated = rescheduleAppointment(
+        appointments,
+        procedures,
+        appointment.id,
+        newDate,
+        newTime,
+        role,
+      );
+      setAppointments(updated);
+      setDate(newDate);
+      setExpandedAppointment(null);
+      setToast(
+        `Horário de ${appointment.client} alterado de ${appointment.time} para ${newTime} em ${newDate.split("-").reverse().join("/")}.`,
+      );
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Não foi possível reagendar.";
+      if (rescheduleTarget) setFormError(message);
+      else setToast(message);
+      return false;
+    }
+  }
   function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -385,6 +421,14 @@ export default function App() {
                   </button>
                 )}
               </div>
+              {canReschedule(a) && (
+                <button
+                  className="text-button"
+                  onClick={() => setRescheduleTarget(a)}
+                >
+                  Reagendar
+                </button>
+              )}
               {["Agendado", "Confirmado"].includes(a.status) && (
                 <div className="agenda-card-actions">
                   {a.status === "Agendado" ? (
@@ -931,72 +975,19 @@ export default function App() {
                       Toque em um atendimento para ver as ações. Horários
                       locais.
                     </p>
-                    <div
-                      className="agenda-stack"
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape") setExpandedAppointment(null);
-                      }}
-                    >
-                      {agendaHours(scoped.filter((a) => a.date === date)).map(
-                        (slot) => (
-                          <section
-                            className="stack-slot"
-                            aria-label={`Horário ${slot.label}`}
-                            key={slot.label}
-                          >
-                            <time className="stack-hour">{slot.label}</time>
-                            <div className="stack-slot-items">
-                              {slot.appointments.length ? (
-                                slot.appointments.map((a) => (
-                                  <div key={a.id}>
-                                    <button
-                                      className={`stack-appointment stack-tone-${agendaStatusTone(a.status)}`}
-                                      aria-expanded={
-                                        expandedAppointment === a.id
-                                      }
-                                      aria-controls={`stack-details-${a.id}`}
-                                      onClick={() =>
-                                        setExpandedAppointment(
-                                          expandedAppointment === a.id
-                                            ? null
-                                            : a.id,
-                                        )
-                                      }
-                                    >
-                                      <span className="stack-box-head">
-                                        <strong>
-                                          {a.time} · {a.client}
-                                        </strong>
-                                        <span className="stack-status">
-                                          {a.status}
-                                        </span>
-                                      </span>
-                                      <span className="stack-box-body">
-                                        <span>{a.procedure}</span>
-                                        <strong>{money(a.value)}</strong>
-                                      </span>
-                                      {admin && <small>{a.professional}</small>}
-                                    </button>
-                                    {expandedAppointment === a.id && (
-                                      <div
-                                        className="stack-detail"
-                                        id={`stack-details-${a.id}`}
-                                      >
-                                        {appointmentRows([a], true)}
-                                      </div>
-                                    )}
-                                  </div>
-                                ))
-                              ) : (
-                                <span className="stack-empty">
-                                  Sem agendamentos
-                                </span>
-                              )}
-                            </div>
-                          </section>
-                        ),
-                      )}
-                    </div>
+                    <AgendaStack
+                      appointments={scoped.filter((a) => a.date === date)}
+                      admin={admin}
+                      expanded={expandedAppointment}
+                      onExpand={setExpandedAppointment}
+                      onMove={(appointment, time) =>
+                        moveAppointment(appointment, date, time)
+                      }
+                      onReschedule={setRescheduleTarget}
+                      renderDetails={(appointment) =>
+                        appointmentRows([appointment], true)
+                      }
+                    />
                   </>
                 ) : (
                   appointmentRows(
@@ -1422,21 +1413,90 @@ export default function App() {
       <dialog ref={modalRef} onCancel={close} aria-labelledby="modal-title">
         <div className="modal-head">
           <h2 id="modal-title">
-            {completionAppointment
-              ? "Como o cliente pagou?"
-              : campaignClient
-                ? "Revisar lembrete"
-                : modal === "appointment"
-                  ? "Novo atendimento"
-                  : modal === "client"
-                    ? "Novo cliente"
-                    : "Novo procedimento"}
+            {rescheduleTarget
+              ? "Reagendar atendimento"
+              : completionAppointment
+                ? "Como o cliente pagou?"
+                : campaignClient
+                  ? "Revisar lembrete"
+                  : modal === "appointment"
+                    ? "Novo atendimento"
+                    : modal === "client"
+                      ? "Novo cliente"
+                      : "Novo procedimento"}
           </h2>
           <button className="icon" aria-label="Fechar" onClick={close}>
             <X />
           </button>
         </div>
-        {completionAppointment ? (
+        {rescheduleTarget ? (
+          <form
+            className="modal-body"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const data = new FormData(event.currentTarget);
+              if (
+                moveAppointment(
+                  rescheduleTarget,
+                  String(data.get("rescheduleDate")),
+                  String(data.get("rescheduleTime")),
+                )
+              )
+                close();
+            }}
+          >
+            <p>
+              <strong>{rescheduleTarget.client}</strong>
+              <br />
+              {rescheduleTarget.procedure} · {rescheduleTarget.professional}
+              <br />
+              Horário atual:{" "}
+              {rescheduleTarget.date.split("-").reverse().join("/")} às{" "}
+              {rescheduleTarget.time}
+            </p>
+            {formError && (
+              <div className="form-error" role="alert">
+                {formError}
+              </div>
+            )}
+            <div className="form-row">
+              <label>
+                Nova data
+                <input
+                  name="rescheduleDate"
+                  type="date"
+                  defaultValue={rescheduleTarget.date}
+                  required
+                />
+              </label>
+              <label>
+                Novo horário
+                <input
+                  name="rescheduleTime"
+                  type="time"
+                  defaultValue={rescheduleTarget.time}
+                  step="900"
+                  min="08:00"
+                  max="20:00"
+                  required
+                />
+              </label>
+            </div>
+            <small>
+              Intervalos de 15 minutos. O profissional, o procedimento, o valor,
+              o status e o pagamento são mantidos. Conflitos bloqueiam a
+              alteração.
+            </small>
+            <div className="modal-actions">
+              <button className="secondary" type="button" onClick={close}>
+                Cancelar
+              </button>
+              <button className="primary" type="submit">
+                Salvar novo horário
+              </button>
+            </div>
+          </form>
+        ) : completionAppointment ? (
           <div className="modal-body">
             <p>
               <strong>{completionAppointment.client}</strong>

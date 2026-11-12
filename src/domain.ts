@@ -280,3 +280,53 @@ export const agendaStatusTone = (status: string) =>
     Cancelado: "cancelled",
     "Não compareceu": "absent",
   })[status] || "absent";
+
+export const canReschedule = (appointment: Appointment) =>
+  ["Agendado", "Confirmado"].includes(appointment.status);
+
+export function rescheduleAppointment(
+  appointments: Appointment[],
+  procedures: Procedure[],
+  id: number,
+  date: string,
+  time: string,
+  role: Role,
+): Appointment[] {
+  const appointment = appointments.find((item) => item.id === id);
+  if (
+    !appointment ||
+    (role === "professional" && appointment.professional !== professionals[0])
+  )
+    throw new Error("Atendimento indisponível para este perfil demonstrativo.");
+  if (!canReschedule(appointment))
+    throw new Error(
+      "Só é possível reagendar atendimentos agendados ou confirmados.",
+    );
+  const validDate =
+    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    Number.isFinite(Date.parse(date)) &&
+    new Date(date).toISOString().slice(0, 10) === date;
+  if (!validDate) throw new Error("Escolha uma data válida.");
+  if (!/^(?:0[8-9]|1\d|20):(?:00|15|30|45)$/.test(time) || time > "20:00")
+    throw new Error(
+      "Escolha um horário entre 08:00 e 20:00, em intervalos de 15 minutos.",
+    );
+  const duration =
+    procedures.find((p) => p.name === appointment.procedure)?.duration ?? 60;
+  if (
+    hasConflict(
+      appointments.filter((item) => item.id !== id),
+      procedures,
+      appointment.professional,
+      date,
+      time,
+      duration,
+    )
+  )
+    throw new Error(
+      "Há um conflito na agenda deste profissional. O horário original foi mantido.",
+    );
+  return appointments.map((item) =>
+    item.id === id ? { ...item, date, time } : item,
+  );
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   agendaHours,
+  rescheduleAppointment,
   paymentMethods,
   normalizeAppointments,
   recordPayment,
@@ -262,5 +263,155 @@ describe("agenda em pilha", () => {
     ]);
     expect(slots[0].label).toBe("07:00");
     expect(slots.at(-1)?.label).toBe("21:00");
+  });
+});
+
+describe("reagendamento", () => {
+  it("move em 15 minutos preservando identidade, preço, repasse, status e pagamento", () => {
+    const original = {
+      ...initialAppointments[0],
+      status: "Confirmado",
+      paymentMethod: "Pix" as const,
+    };
+    const [moved] = rescheduleAppointment(
+      [original],
+      initialProcedures,
+      original.id,
+      "2026-11-12",
+      "09:15",
+      "admin",
+    );
+    expect(moved).toEqual({ ...original, date: "2026-11-12", time: "09:15" });
+    expect(original.time).toBe("09:00");
+  });
+  it("não conflita com o próprio horário e permite períodos contíguos", () => {
+    const base = initialAppointments[0];
+    expect(
+      rescheduleAppointment(
+        [base],
+        initialProcedures,
+        base.id,
+        base.date,
+        base.time,
+        "admin",
+      )[0],
+    ).toEqual(base);
+    const other = { ...base, id: 90, time: "10:00" };
+    expect(
+      rescheduleAppointment(
+        [base, other],
+        initialProcedures,
+        base.id,
+        base.date,
+        "09:00",
+        "admin",
+      )[0].time,
+    ).toBe("09:00");
+  });
+  it("bloqueia sobreposição e mantém os dados originais", () => {
+    const base = initialAppointments[0],
+      other = { ...base, id: 90, time: "10:00" };
+    expect(() =>
+      rescheduleAppointment(
+        [base, other],
+        initialProcedures,
+        base.id,
+        base.date,
+        "09:15",
+        "admin",
+      ),
+    ).toThrow("conflito");
+    expect(base.time).toBe("09:00");
+  });
+  it("permite horários iguais de profissionais diferentes", () => {
+    const base = initialAppointments[0],
+      other = {
+        ...base,
+        id: 90,
+        professional: professionals[1],
+        time: "10:00",
+      };
+    expect(
+      rescheduleAppointment(
+        [base, other],
+        initialProcedures,
+        base.id,
+        base.date,
+        "10:00",
+        "admin",
+      )[0].time,
+    ).toBe("10:00");
+  });
+  it.each(["Concluído", "Cancelado", "Não compareceu"])(
+    "não move atendimento %s",
+    (status) => {
+      const base = { ...initialAppointments[0], status };
+      expect(() =>
+        rescheduleAppointment(
+          [base],
+          initialProcedures,
+          base.id,
+          base.date,
+          "12:00",
+          "admin",
+        ),
+      ).toThrow();
+    },
+  );
+  it.each(["07:45", "20:15", "09:10", "25:00", "9:00", ""])(
+    "rejeita horário inválido %s",
+    (time) => {
+      const base = initialAppointments[0];
+      expect(() =>
+        rescheduleAppointment(
+          [base],
+          initialProcedures,
+          base.id,
+          base.date,
+          time,
+          "admin",
+        ),
+      ).toThrow("15 minutos");
+    },
+  );
+  it.each(["2026-02-30", "inválida", ""])(
+    "rejeita data inválida %s",
+    (date) => {
+      const base = initialAppointments[0];
+      expect(() =>
+        rescheduleAppointment(
+          [base],
+          initialProcedures,
+          base.id,
+          date,
+          "12:00",
+          "admin",
+        ),
+      ).toThrow("data válida");
+    },
+  );
+  it("permite o próprio reagendamento e bloqueia outro profissional no perfil demonstrativo", () => {
+    const base = initialAppointments[0];
+    expect(
+      rescheduleAppointment(
+        [base],
+        initialProcedures,
+        base.id,
+        base.date,
+        "12:00",
+        "professional",
+      )[0].time,
+    ).toBe("12:00");
+    const other = { ...base, professional: professionals[1] };
+    expect(() =>
+      rescheduleAppointment(
+        [other],
+        initialProcedures,
+        other.id,
+        other.date,
+        "12:00",
+        "professional",
+      ),
+    ).toThrow("perfil");
   });
 });

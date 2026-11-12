@@ -44,7 +44,7 @@ A data de referência demonstrativa é **11/11/2026**, identificada na interface
 - Dados fictícios persistidos no `localStorage`, com chaves `navalha-v01-*`; perfil de entrada não persiste. Para reiniciar a demonstração, remova essas chaves nas ferramentas do navegador.
 - Sem backend, banco de dados, autenticação, controle de acesso real, auditoria ou sincronização entre dispositivos. Não usar com dados reais.
 - Equipe inicial fixa; o cadastro completo de profissionais, jornadas, bloqueios, despesas, pagamentos, relatórios e permissões configuráveis ficará para versões futuras.
-- Agenda em lista, sem visão semanal/mensal, arrastar eventos, edição completa ou reagendamento.
+- Agenda diária em Lista ou Pilha, sem visão semanal/mensal, troca de profissional pelo arraste ou edição completa do atendimento.
 - Repasses percentuais; valores fixos, descontos, pagamento e conciliação não implementados.
 - Persistência requer armazenamento habilitado no navegador. Limpar os dados remove também o histórico de bloqueio de campanhas. Nenhuma garantia contra duplicação em múltiplas abas/dispositivos.
 - Tipografia pode carregar do Google Fonts; fontes do sistema servem como alternativa. Nenhum dado de cliente é enviado a esse serviço.
@@ -80,4 +80,12 @@ As opções de pagamento têm ícones e cores: Dinheiro verde, Pix turquesa, Cr�
 
 Na Agenda, alterne entre **Lista** e **Pilha**. A preferência fica salva no navegador. A Pilha organiza os horários de 08h a 20h (ampliando quando há registro fora desse intervalo), com caixas ordenadas por horário e agrupadas na mesma faixa de hora. Cada caixa mostra hora exata, cliente, procedimento, valor, status e profissional (na visão administrativa).
 
-Cores: Agendado amarelo, Confirmado azul, Concluído verde, Cancelado vermelho e Não compareceu cinza, sempre com texto do status e legenda. Toque na caixa para expandir as ações existentes, incluindo conclusão e pagamento. Os filtros de data e profissional e os limites demonstrativos de cada perfil são preservados. Horas vazias indicam apenas ausência de agendamentos, sem garantir disponibilidade de jornada. Não há arrastar eventos ou posicionamento proporcional à duração.
+Cores: Agendado amarelo, Confirmado azul, Concluído verde, Cancelado vermelho e Não compareceu cinza, sempre com texto do status e legenda. Toque na caixa para expandir as ações existentes, incluindo conclusão e pagamento. Os filtros de data e profissional e os limites demonstrativos de cada perfil são preservados. Horas vazias indicam apenas ausência de agendamentos, sem garantir disponibilidade de jornada. Há arraste pela alça com encaixe a cada 15 minutos; não há posicionamento proporcional à duração.
+
+### Arraste e reagendamento
+
+Na **Pilha**, arraste a caixa pela alça ⋮⋮ até um dos destinos destacados (08:00–20:00, a cada 15 minutos). No celular, pressione a alça por aproximadamente 300ms antes de mover. A rolagem continua disponível fora da alça; perto das bordas superior e inferior há rolagem automática durante o arraste. Escape, cancelamento do ponteiro ou soltar fora de um destino descartam a operação. Um simples toque na alça não altera o horário.
+
+**Reagendar** abre um formulário para escolher data e hora por toque ou teclado, tanto na Lista quanto na Pilha. Somente Agendados e Confirmados podem ser movidos. A validação usa toda a agenda do profissional, exclui o próprio registro e respeita a duração do serviço. Conflitos mantêm o horário original. Cliente, profissional, procedimento, preço, percentual de repasse, status e pagamento permanecem iguais. O perfil profissional só pode reagendar seus registros demonstrativos.
+
+Alterações persistem somente no navegador. Não há notificações, confirmação pelo cliente, sincronização multiusuário ou histórico de auditoria. Gestos de toque precisam de validação adicional em aparelhos físicos antes de uso real.

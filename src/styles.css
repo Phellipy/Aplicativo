@@ -2159,3 +2159,141 @@ fieldset .check-row input {
     min-height: 44px;
   }
 }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.drag-instructions {
+  font-size: 10px;
+  margin: 0 0 12px;
+  color: #7a8797;
+  line-height: 1.6;
+}
+.stack-draggable-box {
+  display: flex;
+  align-items: stretch;
+  position: relative;
+  background: var(--stack-bg);
+  border: 1px solid var(--stack-border);
+  border-left: 4px solid var(--stack-accent);
+  border-radius: 9px;
+}
+.stack-draggable-box .stack-appointment {
+  border: 0;
+  background: transparent;
+  min-width: 0;
+  border-radius: 6px;
+  padding-left: 12px;
+}
+.stack-draggable-box:hover {
+  border-color: var(--stack-accent);
+}
+.stack-drag-handle {
+  width: 40px;
+  min-width: 40px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--stack-ink);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  border-right: 1px solid var(--stack-border);
+  border-radius: 5px 0 0 5px;
+}
+.stack-drag-handle:active {
+  cursor: grabbing;
+  background: #ffffff80;
+}
+.stack-source-dragging > .stack-draggable-box {
+  opacity: 0.45;
+}
+.stack-reschedule {
+  min-height: 36px;
+  margin-left: auto;
+  padding: 4px 3px;
+  font-size: 10px;
+}
+.stack-drop-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+}
+.stack-drop-target {
+  min-height: 44px;
+  border: 1px dashed #9cbbd9;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #426a93;
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+  pointer-events: auto;
+}
+.stack-drop-target.is-over {
+  border: 2px solid #0869c8;
+  background: #d3e9ff;
+  color: #084a8a;
+  font-weight: 700;
+}
+.stack-drag-preview {
+  position: fixed;
+  z-index: 90;
+  pointer-events: none;
+  width: 205px;
+  border: 1px solid var(--stack-accent);
+  border-left: 4px solid var(--stack-accent);
+  background: var(--stack-bg);
+  color: var(--stack-ink);
+  border-radius: 9px;
+  padding: 11px;
+  box-shadow: 0 8px 25px #18385026;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+}
+.stack-drag-preview span {
+  font-size: 11px;
+}
+.is-dragging {
+  user-select: none;
+}
+@media (max-width: 760px) {
+  .stack-drag-handle {
+    width: 32px;
+    min-width: 32px;
+  }
+  .stack-draggable-box .stack-appointment {
+    padding-left: 8px;
+  }
+  .stack-drop-target {
+    font-size: 10px;
+  }
+}
+/* Destinos sobrepostos mantêm a posição das caixas estável durante o arraste. */
+.stack-slot-items {
+  position: relative;
+  min-height: 44px;
+}
+.stack-drop-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+}
+.stack-drop-target {
+  background: #eff6fff0;
+  box-shadow: 0 1px 4px #31516a0d;
+}
+.stack-drop-target.is-over {
+  background: #d3e9fff5;
+}

@@ -41,3 +41,9 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Build e 33 testes aprovados. Novos testes cobrem horários vazios, registros simultâneos, ordenação dos minutos sem alteração dos dados e registros fora do intervalo padrão.
 - Alternância Lista/Pilha, caixas por status e expansão das ações verificadas no navegador.
 - Inspeção em 390px sem transbordamento da página; caixas mostram cliente, procedimento, valor e texto de status, com legenda das cores.
+
+## Arraste e reagendamento
+
+- Build e 50 testes aprovados. Casos de reagendamento cobrem intervalos de 15 minutos, datas e horários inválidos, conflitos/horários contíguos, exclusão do próprio registro, profissionais diferentes, preservação dos campos e limites do perfil demonstrativo.
+- Navegador em origem local isolada: arraste real do atendimento de Marcos das 09:00 para 10:15 aprovado, preservando dados. Formulário com tentativa às 14:00 detectou conflito com outro atendimento e manteve 10:15.
+- Alternativa por formulário disponível para teclado/toque. Toque prolongado implementado com Pointer Events e alça dedicada; não houve teste em celular físico.
