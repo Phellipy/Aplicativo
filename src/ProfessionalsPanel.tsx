@@ -1,5 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Plus, X, ChevronRight, UserRound } from "lucide-react";
+import {
+  Plus,
+  X,
+  ChevronRight,
+  UserRound,
+  Trash2,
+  RotateCcw,
+} from "lucide-react";
 import { createDemoCredential } from "./demoAccess";
 import WorkScheduleEditor from "./WorkScheduleEditor";
 import {
@@ -17,6 +24,8 @@ type Props = {
   onCreate: (name: string) => void;
   onUpdate: (record: ProfessionalRecord) => void;
   onSchedule: (schedule: WorkSchedule) => void;
+  onDelete: (id: number) => void;
+  onRestore: (id: number) => void;
 };
 export default function ProfessionalsPanel({
   records,
@@ -26,6 +35,8 @@ export default function ProfessionalsPanel({
   onCreate,
   onUpdate,
   onSchedule,
+  onDelete,
+  onRestore,
 }: Props) {
   const [selected, setSelected] = useState<number | "new" | null>(null),
     [tab, setTab] = useState<"access" | "schedule" | "services">("access"),
@@ -33,14 +44,16 @@ export default function ProfessionalsPanel({
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [services, setServices] = useState<ProfessionalRecord["services"]>([]);
+  const [showDeleted, setShowDeleted] = useState(false),
+    [deleteId, setDeleteId] = useState<number | null>(null);
   const dialog = useRef<HTMLDialogElement>(null),
     previousFocus = useRef<HTMLElement | null>(null);
-  const record = records.find((p) => p.id === selected);
+  const record = records.find((p) => p.id === (deleteId ?? selected));
   useEffect(() => {
     setError("");
     setNotice("");
     setTab("access");
-    if (selected !== null) {
+    if (selected !== null || deleteId !== null) {
       previousFocus.current = document.activeElement as HTMLElement;
       setServices(
         records
@@ -52,9 +65,12 @@ export default function ProfessionalsPanel({
       dialog.current?.close();
       previousFocus.current?.focus();
     }
-  }, [selected]);
+  }, [selected, deleteId]);
   function close() {
-    if (!busy) setSelected(null);
+    if (!busy) {
+      setSelected(null);
+      setDeleteId(null);
+    }
   }
   function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -94,54 +110,92 @@ export default function ProfessionalsPanel({
     <>
       <div className="professionals-toolbar">
         <span>
-          {records.filter((p) => p.active).length} ativos · {records.length}{" "}
-          cadastrados
+          {records.filter((p) => p.active && !p.deletedAt).length} ativos ·{" "}
+          {records.filter((p) => !p.deletedAt).length} cadastrados
         </span>
         <button className="primary" onClick={() => setSelected("new")}>
           <Plus size={18} />
           Novo profissional
         </button>
       </div>
+      <div
+        className="period-buttons archive-switch"
+        role="group"
+        aria-label="Situação dos profissionais"
+      >
+        <button
+          aria-pressed={!showDeleted}
+          onClick={() => setShowDeleted(false)}
+        >
+          Cadastrados
+        </button>
+        <button aria-pressed={showDeleted} onClick={() => setShowDeleted(true)}>
+          Excluídos ({records.filter((p) => p.deletedAt).length})
+        </button>
+      </div>
       <section className="panel professionals-list">
-        {records.map((p) => (
-          <div className="professional-list-row" key={p.id}>
-            <span className="avatar">
-              <UserRound size={18} />
-            </span>
-            <button
-              className="professional-name"
-              onClick={() => setSelected(p.id)}
-            >
-              <strong>{p.name}</strong>
-              <small>
-                {
-                  p.services.filter(
-                    (s) =>
-                      s.enabled &&
-                      procedures.some((proc) => proc.id === s.procedureId),
-                  ).length
-                }{" "}
-                procedimentos habilitados
-              </small>
-            </button>
-            <span className={`badge ${p.active ? "green" : "neutral"}`}>
-              {p.active ? "Ativo" : "Desabilitado"}
-            </span>
-            <button
-              className="secondary"
-              onClick={() => onUpdate({ ...p, active: !p.active })}
-            >
-              {p.active ? "Desabilitar" : "Habilitar"}
-            </button>
-            <button
-              className="icon"
-              aria-label={`Configurar ${p.name}`}
-              onClick={() => setSelected(p.id)}
-            >
-              <ChevronRight size={19} />
-            </button>
-          </div>
-        ))}
+        {records
+          .filter((p) => Boolean(p.deletedAt) === showDeleted)
+          .map((p) => (
+            <div className="professional-list-row" key={p.id}>
+              <span className="avatar">
+                <UserRound size={18} />
+              </span>
+              <button
+                className="professional-name"
+                onClick={() => setSelected(p.id)}
+                disabled={Boolean(p.deletedAt)}
+              >
+                <strong>{p.name}</strong>
+                <small>
+                  {
+                    p.services.filter(
+                      (s) =>
+                        s.enabled &&
+                        procedures.some((proc) => proc.id === s.procedureId),
+                    ).length
+                  }{" "}
+                  procedimentos habilitados
+                </small>
+              </button>
+              <span className={`badge ${p.active ? "green" : "neutral"}`}>
+                {p.deletedAt ? "Excluído" : p.active ? "Ativo" : "Desabilitado"}
+              </span>
+              {p.deletedAt ? (
+                <button className="secondary" onClick={() => onRestore(p.id)}>
+                  <RotateCcw size={15} />
+                  Restaurar
+                </button>
+              ) : (
+                <>
+                  <button
+                    className="secondary"
+                    onClick={() => onUpdate({ ...p, active: !p.active })}
+                  >
+                    {p.active ? "Desabilitar" : "Habilitar"}
+                  </button>
+                  <button
+                    className="icon"
+                    aria-label={`Configurar ${p.name}`}
+                    onClick={() => setSelected(p.id)}
+                  >
+                    <ChevronRight size={19} />
+                  </button>
+                  <button
+                    className="secondary danger-button"
+                    aria-label={`Excluir profissional ${p.name}`}
+                    onClick={() => setDeleteId(p.id)}
+                  >
+                    <Trash2 size={15} />
+                    Excluir
+                  </button>
+                </>
+              )}
+            </div>
+          ))}
+        {!records.some((p) => Boolean(p.deletedAt) === showDeleted) && (
+          <div className="empty">Nenhum profissional nesta lista.</div>
+        )}
       </section>
       <p className="availability-note">
         Desabilitar bloqueia novos agendamentos e o acesso demonstrativo. O
@@ -158,7 +212,11 @@ export default function ProfessionalsPanel({
       >
         <div className="modal-head">
           <h2 id="professional-title">
-            {selected === "new" ? "Novo profissional" : record?.name}
+            {deleteId !== null
+              ? "Excluir profissional"
+              : selected === "new"
+                ? "Novo profissional"
+                : record?.name}
           </h2>
           <button
             className="icon"
@@ -169,7 +227,51 @@ export default function ProfessionalsPanel({
             <X />
           </button>
         </div>
-        {selected === "new" ? (
+        {deleteId !== null ? (
+          <div className="modal-body">
+            {error && (
+              <div className="form-error" role="alert">
+                {error}
+              </div>
+            )}
+            <p>
+              Excluir <strong>{record?.name}</strong> do cadastro ativo?
+            </p>
+            <p>
+              O acesso e novos agendamentos serão bloqueados. Histórico,
+              serviços e repasses registrados serão preservados. Você poderá
+              restaurar o cadastro em Excluídos; ele voltará desabilitado.
+            </p>
+            <p>
+              {
+                appointments.filter(
+                  (a) =>
+                    a.professional === record?.name &&
+                    ["Agendado", "Confirmado"].includes(a.status),
+                ).length
+              }{" "}
+              agendamento(s) em aberto permanecem na agenda para revisão.
+            </p>
+            <div className="modal-actions">
+              <button className="secondary" onClick={close}>
+                Cancelar
+              </button>
+              <button
+                className="primary danger-button"
+                onClick={() => {
+                  try {
+                    onDelete(deleteId);
+                    close();
+                  } catch (e) {
+                    setError((e as Error).message);
+                  }
+                }}
+              >
+                Excluir profissional
+              </button>
+            </div>
+          </div>
+        ) : selected === "new" ? (
           <form className="modal-body" onSubmit={add}>
             {error && (
               <div className="form-error" role="alert">

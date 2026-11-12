@@ -34,6 +34,10 @@ export async function createDemoCredential(
 ): Promise<DemoCredential> {
   if (password.length < 6 || password.length > 128)
     throw new Error("Use de 6 a 128 caracteres na senha de demonstração.");
+  if (!globalThis.crypto?.subtle)
+    throw new Error(
+      "Este navegador exige HTTPS para configurar a senha demonstrativa. Configure pelo computador em localhost.",
+    );
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return { salt: hex(salt), hash: await derive(password, salt) };
 }

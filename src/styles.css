@@ -3444,3 +3444,104 @@ fieldset .check-row input {
     font-size: 10px;
   }
 }
+.client-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.client-tools .search {
+  margin: 0;
+  flex: 1;
+  min-width: 230px;
+}
+.client-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.client-actions .secondary {
+  font-size: 11px;
+  padding: 9px 12px;
+}
+.danger-button.secondary {
+  color: #a44840;
+  border-color: #ecd3cf;
+  background: #fff8f7;
+}
+.danger-button.primary {
+  color: #fff;
+  background: #a44840;
+}
+.danger-button:hover {
+  background: #fbe9e6;
+}
+.danger-button.primary:hover {
+  background: #8a3731;
+}
+.whatsapp-button {
+  color: #28734a;
+  border-color: #c8e0d1;
+  background: #f3faf5;
+}
+.whatsapp-link {
+  text-decoration: none;
+  justify-content: center;
+  background: #237447;
+}
+.whatsapp-link:hover {
+  background: #195c37;
+}
+.whatsapp-link.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.archive-switch {
+  display: inline-flex;
+  margin-bottom: 18px;
+}
+.message-history {
+  font-size: 10px;
+  margin-top: 8px;
+}
+.message-history summary {
+  cursor: pointer;
+  min-height: 30px;
+  padding: 5px 0;
+  color: #527fac;
+}
+.message-history p {
+  font-size: 11px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .client-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+  .client-actions .secondary {
+    margin-left: 0;
+    min-height: 44px;
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .professional-list-row > .danger-button {
+    min-height: 44px;
+  }
+  .client-tools .search {
+    max-width: none;
+    width: 100%;
+  }
+}
+.modal-body input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  accent-color: var(--blue);
+}

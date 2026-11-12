@@ -26,19 +26,23 @@ O build gera `dist/`. O administrador demonstrativo entra sem credencial. Seleci
 - **Dashboard**: períodos Hoje, Mês e Ano, taxa de ocupação realizada, valores e repasses, filtros por profissional e alertas de reativação.
 - **Métricas** (administrador): gráficos de atendimentos, financeiro, clientes, faltas, pagamentos e ocupação, com Dia/Semana/Mês/Ano e filtro por profissional.
 - **Agenda**: Lista ou Pilha, períodos Hoje/Mês/Ano, cadastro com múltiplos procedimentos, horários filtrados por jornada e ausências, validação de habilitação e sobreposição de horários, confirmação explícita do atendimento, mudança de status e atualização da última visita ao concluir. Pagamento manual por dinheiro, Pix, cartão de crédito ou cartão de débito, com opção Não pago.
-- **Clientes**: cadastro, busca por nome/telefone, última visita, registro de autorização para lembretes e fila de reativação.
+- **Clientes**: cadastro, edição, exclusão/restauração, busca, última visita, autorização e abertura manual do WhatsApp com mensagem revisada.
 - **Financeiro**: valores recebidos de serviços concluídos com pagamento registrado, repasses de todos os concluídos e saldo antes de despesas (recebido menos repasses dos serviços pagos). O saldo não é apresentado como lucro.
-- **Profissionais**: cadastro, habilitação/desabilitação e janela individual com Acesso, Jornada e Procedimentos e repasses.
+- **Profissionais**: cadastro, habilitação/desabilitação, exclusão/restauração e janela individual com Acesso, Jornada e Procedimentos e repasses.
 - **Procedimentos**: cadastro e edição somente de nome, duração e valor. Habilitação de serviços e repasses são configurados exclusivamente na janela do profissional pelo administrador. Novos atendimentos fixam os dados do serviço e do repasse.
 - **Configurações**: administrador edita e pré-visualiza a mensagem de retorno; profissional configura sua própria jornada e ausências.
 
 O administrador visualiza os módulos completos. Cada profissional ativo visualiza somente seus atendimentos, seus indicadores, seus procedimentos, seus ganhos e sua jornada. **Esses filtros são apenas demonstração de interface: todos os dados estão no navegador e não existe autorização segura.**
 
-## Reativação e WhatsApp
+## Contato manual pelo WhatsApp
 
-A data de referência demonstrativa é **11/11/2026**, identificada na interface. Clientes com autorização registrada e última visita há pelo menos 30 dias podem ter uma mensagem revisada e adicionada à fila. O administrador precisa aprovar manualmente cada item. O texto é guardado na fila como uma cópia da mensagem revisada.
+A referência de atendimento da demonstração é **11/11/2026**. Os clientes há 30 dias ou mais sem atendimento são identificados para retorno, mas não há disparo automático.
 
-**Não há envio pelo WhatsApp**, API, sincronização de contatos ou campanha automática. A aprovação registra somente o estado local “Aprovado · não enviado”. Cada cliente pode entrar na fila uma única vez nesta versão; itens pendentes e aprovados impedem novas inclusões mesmo após recarregar. Não há reenvio automático nem reinício de campanhas após nova visita. A proteção precisa ser implementada no servidor antes de qualquer integração real.
+Em **Clientes → WhatsApp**, revise ou edite o texto e toque em **Abrir no WhatsApp**. O link `wa.me` inclui telefone e mensagem, abre a conversa em outra aba/aplicativo e deixa a confirmação final de envio para você no WhatsApp. O botão exige autorização registrada, cliente ativo, número válido com DDD e mensagem preenchida. Para números brasileiros sem DDI, acrescenta 55; para outros países, informe + e o código do país.
+
+A aplicação registra somente **solicitação de abertura**, nunca “enviado”. Não há API, envio automático, importação de contatos, retorno de entrega/leitura ou garantia de que uma nova aba foi aberta pelo navegador. Os registros antigos de fila/aprovação são mantidos no armazenamento por compatibilidade, mas não provocam envio nem entram como abertura de WhatsApp.
+
+Para evitar cliques repetidos, o mesmo texto para o mesmo cliente só pode ter nova abertura após **7 dias**, contados pelo relógio do navegador. Outra mensagem, revisada manualmente, pode ser preparada. A proteção é local e não impede repetição diretamente no WhatsApp ou em outro dispositivo; limpar os dados remove o histórico.
 
 ## Armazenamento e limitações
 
@@ -58,7 +62,8 @@ Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram a
 - `src/domain.ts`: tipos, dados fictícios e regras de períodos, disponibilidade, múltiplos serviços, visibilidade, reativação, conflitos e repasses.
 - `src/AppointmentFields.tsx`: seleção múltipla e horários disponíveis; reagendamento com disponibilidade.
 - `src/WorkScheduleEditor.tsx`: jornada semanal e restrições pontuais.
-- `src/ProfessionalsPanel.tsx`: cadastro, situação e janela de configuração do profissional.
+- `src/ProfessionalsPanel.tsx`: cadastro, situação, exclusão/restauração e configuração do profissional.
+- `src/ClientsPanel.tsx`, `src/contacts.test.ts`: edição/exclusão/restauração, abertura manual de WhatsApp e testes.
 - `src/demoAccess.ts`, `src/demoAccess.test.ts`: derivação/verificação local de senhas fictícias e testes.
 - `src/AgendaStack.tsx`: escala temporal proporcional, colunas por profissional e arraste.
 - `src/PeriodControls.tsx`, `src/AgendaPeriod.tsx`: períodos e navegação de calendário.
@@ -75,7 +80,7 @@ Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram a
 2. Cadastre um horário livre; tente repetir o mesmo horário/profissional e veja o bloqueio.
 3. Conclua um atendimento e confira o financeiro e a última visita do cliente.
 4. Em Profissionais, clique no nome e abra Procedimentos e repasses para alterar um percentual; novos atendimentos usam o percentual e os anteriores mantêm o valor fixado.
-5. Em Clientes, revise um lembrete e aprove na fila; recarregue e confira que não pode ser duplicado.
+5. Em Clientes, edite um cadastro e confira os dados na agenda. Revise o texto no botão WhatsApp; o envio é feito por você no WhatsApp, sem fila automática.
 6. Saia e entre como Rafael: outros profissionais e campanhas deixam de aparecer; Configurações exibe apenas a própria jornada.
 7. Reduza a largura para 390px e 768px; navegue pelo menu e pelos formulários usando toque/teclado.
 
@@ -148,3 +153,23 @@ A aba **Métricas** é exclusiva do administrador e oferece:
 Recebimentos são somente os serviços concluídos com forma de pagamento registrada. Os gráficos financeiros agrupam pela data do atendimento: não existe data de compensação/pagamento efetivo. Custos, taxas, tributos, estornos e despesas não estão cadastrados; o saldo não representa lucro. Os rankings usam o nome nos registros locais e ainda não distinguem clientes homônimos.
 
 Gráficos vazios não recebem dados artificiais. No celular, os gráficos de evolução têm rolagem própria para manter a leitura; os valores também podem ser consultados em **Ver dados do gráfico**.
+
+### Editar e excluir cadastros
+
+O administrador pode **editar nome, telefone, última visita e autorização do cliente**. Ao corrigir o nome, os atendimentos vinculados são atualizados por ID (ou nome legado), preservando serviços, datas, status, valores e pagamentos. Novos registros não aceitam nomes duplicados; restaure um excluído em vez de criar outro cadastro com o mesmo nome.
+
+Em **Clientes** e **Profissionais**, **Excluir** pede confirmação e remove o cadastro da lista ativa. A seção **Excluídos** permite restaurar. Esta é uma exclusão reversível: dados e histórico são preservados, sem exclusão permanente. Atendimentos em aberto não são cancelados automaticamente; a confirmação informa a necessidade de revisão. Clientes excluídos não aparecem no novo agendamento nem podem abrir mensagens. Profissionais excluídos perdem acesso demonstrativo e disponibilidade; ao restaurar, voltam desabilitados até o administrador habilitá-los.
+
+### Testar em celular
+
+No computador, abra o aplicativo no Chrome e use as ferramentas do desenvolvedor (macOS: ⌘⌥I; alternância de dispositivo: ⌘⇧M), escolhendo 390 × 844 px ou um modelo de celular.
+
+Para abrir em um celular real, com Node.js/npm instalados, conecte os dois dispositivos ao mesmo Wi-Fi e execute no repositório:
+
+```bash
+npm run dev -- --host 0.0.0.0
+```
+
+Use no celular o endereço **Network** exibido pelo Vite, como `http://192.168.1.10:5173`. Não use `127.0.0.1` no celular para acessar o computador. O servidor precisa continuar rodando; o firewall/rede deve permitir o acesso local.
+
+Os dados são locais por dispositivo e endereço: abrir pelo IP da rede não compartilha automaticamente os dados de 127.0.0.1. A configuração de senha demonstrativa usa Web Crypto, disponível em localhost ou HTTPS; via IP com HTTP pode não estar disponível. Não houve teste em aparelhos físicos.

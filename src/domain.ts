@@ -10,6 +10,7 @@ export type PaymentMethod = (typeof paymentMethods)[number];
 export type Appointment = {
   id: number;
   client: string;
+  clientId?: number;
   professional: string;
   procedure: string;
   date: string;
@@ -53,6 +54,7 @@ export type Client = {
   phone: string;
   lastVisit: string;
   consent: boolean;
+  deletedAt?: string;
 };
 export type Procedure = {
   id: number;
@@ -68,14 +70,16 @@ export type ProfessionalRecord = {
   id: number;
   name: string;
   active: boolean;
+  deletedAt?: string;
   services: { procedureId: number; enabled: boolean; commissionRate: number }[];
   credential?: DemoCredential;
 };
 export type Campaign = {
   clientId: number;
-  status: "pending" | "approved";
+  status: "pending" | "approved" | "opened";
   created: string;
   message?: string;
+  openedAt?: string;
 };
 export const TODAY = "2026-11-11";
 export const professionals = ["Rafael Moura", "Diego Alves", "Lucas Pires"];
@@ -222,10 +226,17 @@ export const eligibleClients = (
 ) =>
   clients.filter(
     (c) =>
+      !c.deletedAt &&
       c.consent &&
       Math.floor((Date.parse(now) - Date.parse(c.lastVisit)) / 86400000) >=
         30 &&
-      !campaigns.some((m) => m.clientId === c.id),
+      !campaigns.some(
+        (m) =>
+          m.clientId === c.id &&
+          (m.status !== "opened" ||
+            !m.openedAt ||
+            Date.now() - Date.parse(m.openedAt) < 7 * 86400000),
+      ),
   );
 export const money = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -733,6 +744,7 @@ export function assignedProcedures(
       .filter(
         (record) =>
           record.active &&
+          !record.deletedAt &&
           record.services.some(
             (s) => s.procedureId === procedure.id && s.enabled,
           ),
@@ -797,7 +809,10 @@ export function effectiveSchedules(
 ): WorkSchedule[] {
   return schedules.map((schedule) =>
     records.some(
-      (record) => record.name === schedule.professional && record.active,
+      (record) =>
+        record.name === schedule.professional &&
+        record.active &&
+        !record.deletedAt,
     )
       ? schedule
       : {
@@ -812,3 +827,137 @@ export const defaultSchedule = (name: string): WorkSchedule => ({
   days: initialWorkSchedules[0].days.map((day) => ({ ...day })),
   restrictions: [],
 });
+
+export function deleteProfessional(
+  records: ProfessionalRecord[],
+  id: number,
+  role: Role,
+  now = new Date().toISOString(),
+) {
+  if (role !== "admin")
+    throw new Error("Somente o administrador exclui profissionais.");
+  if (!records.some((record) => record.id === id))
+    throw new Error("Profissional não encontrado.");
+  return records.map((record) =>
+    record.id === id ? { ...record, active: false, deletedAt: now } : record,
+  );
+}
+export function restoreProfessional(
+  records: ProfessionalRecord[],
+  id: number,
+  role: Role,
+) {
+  if (role !== "admin")
+    throw new Error("Somente o administrador restaura profissionais.");
+  return records.map((record) =>
+    record.id === id
+      ? { ...record, active: false, deletedAt: undefined }
+      : record,
+  );
+}
+export function saveClient(
+  clients: Client[],
+  appointments: Appointment[],
+  updated: Client,
+  role: Role,
+) {
+  if (role !== "admin")
+    throw new Error("Somente o administrador altera clientes.");
+  const name = updated.name.trim(),
+    phone = updated.phone.trim();
+  if (!name || !phone || !validDate(updated.lastVisit))
+    throw new Error("Informe nome, telefone e data válidos.");
+  if (
+    clients.some(
+      (client) =>
+        client.id !== updated.id &&
+        client.name.trim().toLocaleLowerCase("pt-BR") ===
+          name.toLocaleLowerCase("pt-BR"),
+    )
+  )
+    throw new Error(
+      "Já existe um cliente com esse nome, inclusive entre os excluídos.",
+    );
+  const previous = clients.find((client) => client.id === updated.id);
+  const saved = { ...updated, name, phone, deletedAt: previous?.deletedAt };
+  return {
+    clients: previous
+      ? clients.map((client) => (client.id === saved.id ? saved : client))
+      : [...clients, saved],
+    appointments: previous
+      ? appointments.map((appointment) =>
+          appointment.clientId === previous.id ||
+          (!appointment.clientId && appointment.client === previous.name)
+            ? { ...appointment, client: name, clientId: saved.id }
+            : appointment,
+        )
+      : appointments,
+  };
+}
+export function deleteClient(
+  clients: Client[],
+  id: number,
+  role: Role,
+  now = new Date().toISOString(),
+) {
+  if (role !== "admin")
+    throw new Error("Somente o administrador exclui clientes.");
+  if (!clients.some((client) => client.id === id))
+    throw new Error("Cliente não encontrado.");
+  return clients.map((client) =>
+    client.id === id ? { ...client, deletedAt: now } : client,
+  );
+}
+export function restoreClient(clients: Client[], id: number, role: Role) {
+  if (role !== "admin")
+    throw new Error("Somente o administrador restaura clientes.");
+  return clients.map((client) =>
+    client.id === id ? { ...client, deletedAt: undefined } : client,
+  );
+}
+export function whatsAppLink(client: Client, message: string) {
+  if (client.deletedAt)
+    throw new Error("Restaure o cliente antes de abrir o WhatsApp.");
+  if (!client.consent)
+    throw new Error("Registre a autorização do cliente para mensagens.");
+  const phone = client.phone.trim();
+  let digits = phone.replace(/\D/g, "");
+  const international = phone.startsWith("+") || phone.startsWith("00");
+  if (
+    !international &&
+    ![10, 11].includes(digits.length) &&
+    !([12, 13].includes(digits.length) && digits.startsWith("55"))
+  )
+    throw new Error(
+      "Informe DDD e telefone; para outros países, inclua + e o código do país.",
+    );
+  if (phone.startsWith("00")) digits = digits.slice(2);
+  else if (
+    !phone.startsWith("+") &&
+    (digits.length === 10 || digits.length === 11)
+  )
+    digits = `55${digits}`;
+  if (!/^[1-9]\d{7,14}$/.test(digits))
+    throw new Error(
+      "Informe um telefone válido com DDD; para outros países, use + e o código do país.",
+    );
+  if (!message.trim())
+    throw new Error("Escreva uma mensagem antes de abrir o WhatsApp.");
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message.trim())}`;
+}
+export function canOpenWhatsApp(
+  campaigns: Campaign[],
+  clientId: number,
+  message: string,
+  now = Date.now(),
+) {
+  return !campaigns.some(
+    (campaign) =>
+      campaign.clientId === clientId &&
+      campaign.status === "opened" &&
+      campaign.message?.trim() === message.trim() &&
+      campaign.openedAt &&
+      Number.isFinite(Date.parse(campaign.openedAt)) &&
+      now - Date.parse(campaign.openedAt) < 7 * 86400000,
+  );
+}

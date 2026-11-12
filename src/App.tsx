@@ -1,6 +1,7 @@
 import AgendaStack from "./AgendaStack";
 import MetricsPage from "./MetricsPage";
 import { occupationStats, hours, formatPercentage } from "./metrics";
+import ClientsPanel from "./ClientsPanel";
 import ProfessionalsPanel from "./ProfessionalsPanel";
 import { verifyDemoCredential } from "./demoAccess";
 import PeriodControls from "./PeriodControls";
@@ -19,7 +20,6 @@ import {
   UserRound,
   LogOut,
   Plus,
-  Search,
   ArrowUpRight,
   ChevronRight,
   Bell,
@@ -69,6 +69,13 @@ import {
   calculateCommission,
   visibleAppointments,
   eligibleClients,
+  saveClient,
+  deleteClient,
+  restoreClient,
+  deleteProfessional,
+  restoreProfessional,
+  whatsAppLink,
+  canOpenWhatsApp,
   type Appointment,
   type Client,
   type Procedure,
@@ -164,7 +171,7 @@ export default function App() {
   );
   const professionals = records.map((record) => record.name);
   const activeProfessionals = records
-    .filter((record) => record.active)
+    .filter((record) => record.active && !record.deletedAt)
     .map((record) => record.name);
   const bookingProcedures = assignedProcedures(procedures, records);
   const workingSchedules = effectiveSchedules(schedules, records);
@@ -175,6 +182,9 @@ export default function App() {
     [loginPassword, setLoginPassword] = useState(""),
     [loginError, setLoginError] = useState(""),
     [loginBusy, setLoginBusy] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [whatsappDraft, setWhatsappDraft] = useState("");
+  const whatsappClicked = useRef(false);
   const [editingProcedure, setEditingProcedure] = useState<Procedure | null>(
     null,
   );
@@ -192,7 +202,8 @@ export default function App() {
   }, []);
   async function enterProfessional() {
     const record = records.find(
-      (record) => record.name === loginName && record.active,
+      (record) =>
+        record.name === loginName && record.active && !record.deletedAt,
     );
     if (!record) {
       setLoginError("Selecione um profissional habilitado.");
@@ -218,8 +229,7 @@ export default function App() {
       setLoginBusy(false);
     }
   }
-  const [query, setQuery] = useState(""),
-    [date, setDate] = useState(TODAY),
+  const [date, setDate] = useState(TODAY),
     [person, setPerson] = useState("Todos"),
     [modal, setModal] = useState<"appointment" | "client" | "procedure" | null>(
       null,
@@ -325,7 +335,6 @@ export default function App() {
   const navigate = (p: Page) => {
     setPage(p);
     setMobile(false);
-    setQuery("");
     setPerson("Todos");
   };
   const close = () => {
@@ -334,6 +343,7 @@ export default function App() {
     setCompletionAppointment(null);
     setRescheduleTarget(null);
     setEditingProcedure(null);
+    setEditingClient(null);
   };
   function moveAppointment(
     appointment: Appointment,
@@ -373,17 +383,25 @@ export default function App() {
     const f = new FormData(e.currentTarget);
     const str = (k: string) => String(f.get(k) || "").trim();
     if (modal === "client") {
-      if (!str("name")) return;
-      setClients([
-        ...clients,
-        {
-          id: Date.now(),
-          name: str("name"),
-          phone: str("phone"),
-          lastVisit: str("lastVisit"),
-          consent: f.get("consent") === "on",
-        },
-      ]);
+      try {
+        const result = saveClient(
+          clients,
+          appointments,
+          {
+            id: editingClient?.id ?? Date.now(),
+            name: str("name"),
+            phone: str("phone"),
+            lastVisit: str("lastVisit"),
+            consent: f.get("consent") === "on",
+          },
+          role!,
+        );
+        setClients(result.clients);
+        setAppointments(result.appointments);
+      } catch (error) {
+        setFormError((error as Error).message);
+        return;
+      }
     }
     if (modal === "procedure") {
       if (!admin) {
@@ -447,7 +465,14 @@ export default function App() {
           appointments,
           workingSchedules,
         );
-        setAppointments([...appointments, created]);
+        setAppointments([
+          ...appointments,
+          {
+            ...created,
+            clientId: clients.find((client) => client.name === created.client)
+              ?.id,
+          },
+        ]);
       } catch (error) {
         setFormError((error as Error).message);
         return;
@@ -467,6 +492,24 @@ export default function App() {
         ),
       );
     setToast("Atendimento atualizado.");
+  }
+  let whatsappURL = "",
+    whatsappError = "";
+  if (campaignClient) {
+    try {
+      whatsappURL = whatsAppLink(campaignClient, whatsappDraft);
+    } catch (error) {
+      whatsappError = (error as Error).message;
+    }
+  }
+  const whatsappRepeat = campaignClient
+    ? !canOpenWhatsApp(campaigns, campaignClient.id, whatsappDraft)
+    : false;
+  const whatsappAllowed = Boolean(admin && whatsappURL && !whatsappRepeat);
+  function openWhatsAppPreview(client: Client) {
+    whatsappClicked.current = false;
+    setWhatsappDraft(message.replaceAll("{nome}", client.name.split(" ")[0]));
+    setCampaignClient(client);
   }
   if (!role)
     return (
@@ -1002,8 +1045,8 @@ export default function App() {
                         Revisar lembretes <ChevronRight size={16} />
                       </button>
                       <div className="alert-foot">
-                        <ShieldCheck size={16} /> Cada lembrete precisa da sua
-                        aprovação.
+                        <ShieldCheck size={16} /> Cada mensagem é enviada por
+                        você no WhatsApp.
                       </div>
                     </>
                   ) : (
@@ -1245,118 +1288,34 @@ export default function App() {
                   <MessageSquare />
                 </div>
                 <div>
-                  <h2>Um convite para voltar</h2>
+                  <h2>Contato manual pelo WhatsApp</h2>
                   <p>
-                    {eligible.length} clientes elegíveis após 30 dias sem
-                    atendimento. Revise e aprove cada mensagem.
+                    Revise a mensagem e abra o WhatsApp. O envio é confirmado
+                    por você, sem automação.
                   </p>
                 </div>
-                <span className="badge amber">Envio não conectado</span>
+                <span className="badge blue">Envio manual</span>
               </section>
-              <div className="search">
-                <Search size={18} />
-                <input
-                  aria-label="Buscar cliente"
-                  placeholder="Buscar por nome ou telefone..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </div>
-              <section className="panel client-list">
-                {clients
-                  .filter((c) =>
-                    (c.name + c.phone)
-                      .toLowerCase()
-                      .includes(query.toLowerCase()),
-                  )
-                  .map((c) => (
-                    <div className="client-row" key={c.id}>
-                      <Avatar name={c.name} />
-                      <div className="client-info">
-                        <strong>{c.name}</strong>
-                        <small>
-                          {c.phone} · Última visita:{" "}
-                          {c.lastVisit.split("-").reverse().join("/")}
-                        </small>
-                      </div>
-                      {eligible.some((e) => e.id === c.id) ? (
-                        <button
-                          className="secondary"
-                          onClick={() => setCampaignClient(c)}
-                        >
-                          <MessageSquare size={16} /> Revisar lembrete
-                        </button>
-                      ) : (
-                        <Badge
-                          text={
-                            campaigns.some((m) => m.clientId === c.id)
-                              ? "Em campanha"
-                              : !c.consent
-                                ? "Sem autorização"
-                                : "Em dia"
-                          }
-                        />
-                      )}
-                    </div>
-                  ))}
-                {!clients.some((c) =>
-                  (c.name + c.phone)
-                    .toLowerCase()
-                    .includes(query.toLowerCase()),
-                ) && <div className="empty">Nenhum cliente encontrado.</div>}
-              </section>
-              <section className="panel">
-                <div className="panel-head">
-                  <div>
-                    <h2>Fila de reativação</h2>
-                    <p>
-                      Aprovação local; nenhuma mensagem é enviada pelo
-                      aplicativo.
-                    </p>
-                  </div>
-                </div>
-                {campaigns.length ? (
-                  campaigns.map((m) => (
-                    <div className="client-row" key={m.clientId}>
-                      <MessageSquare size={20} />
-                      <div className="client-info">
-                        <strong>
-                          {clients.find((c) => c.id === m.clientId)?.name}
-                        </strong>
-                        <small>
-                          Criado em {m.created} · bloqueado para nova inclusão
-                        </small>
-                        <p className="queued-message">{m.message}</p>
-                      </div>
-                      {m.status === "pending" ? (
-                        <button
-                          className="primary"
-                          onClick={() => {
-                            setCampaigns(
-                              campaigns.map((x) =>
-                                x.clientId === m.clientId
-                                  ? { ...x, status: "approved" }
-                                  : x,
-                              ),
-                            );
-                            setToast(
-                              "Aprovação registrada localmente. Nenhuma mensagem foi enviada.",
-                            );
-                          }}
-                        >
-                          <Check size={16} /> Aprovar manualmente
-                        </button>
-                      ) : (
-                        <Badge text="Aprovado · não enviado" />
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="empty">
-                    Os lembretes revisados aparecerão aqui.
-                  </div>
-                )}
-              </section>
+              <ClientsPanel
+                clients={clients}
+                appointments={appointments}
+                campaigns={campaigns}
+                onEdit={(client) => {
+                  setEditingClient(client);
+                  setModal("client");
+                }}
+                onDelete={(id) => {
+                  setClients(deleteClient(clients, id, role!));
+                  setToast(
+                    "Cliente excluído do cadastro ativo. Histórico preservado.",
+                  );
+                }}
+                onRestore={(id) => {
+                  setClients(restoreClient(clients, id, role!));
+                  setToast("Cliente restaurado.");
+                }}
+                onWhatsApp={openWhatsAppPreview}
+              />
             </>
           )}
           {page === "Financeiro" && (
@@ -1438,6 +1397,14 @@ export default function App() {
               onUpdate={(updated) => {
                 setRecords(updateProfessional(records, updated, role!));
                 setToast("Configuração do profissional salva neste navegador.");
+              }}
+              onDelete={(id) => {
+                setRecords(deleteProfessional(records, id, role!));
+                setToast("Profissional excluído. Histórico preservado.");
+              }}
+              onRestore={(id) => {
+                setRecords(restoreProfessional(records, id, role!));
+                setToast("Profissional restaurado como desabilitado.");
               }}
               onSchedule={(updated) => {
                 if (admin)
@@ -1537,8 +1504,10 @@ export default function App() {
                 </div>
                 <div className="setting-line">
                   <div>
-                    <strong>Aprovação manual</strong>
-                    <small>Cada mensagem exige uma ação do administrador</small>
+                    <strong>Envio manual no WhatsApp</strong>
+                    <small>
+                      O botão abre a conversa; o envio é feito no WhatsApp
+                    </small>
                   </div>
                   <Badge text="Obrigatória" />
                 </div>
@@ -1546,7 +1515,8 @@ export default function App() {
                   <div>
                     <strong>Proteção contra repetição</strong>
                     <small>
-                      Um registro por cliente nesta versão, salvo no navegador
+                      Bloqueia a abertura do mesmo texto para o mesmo cliente
+                      por 7 dias
                     </small>
                   </div>
                   <ShieldCheck size={22} />
@@ -1578,9 +1548,9 @@ export default function App() {
                     {draftMessage.replaceAll("{nome}", "Gustavo")}
                   </div>
                   <div className="notice">
-                    <MessageSquare size={20} />
-                    WhatsApp não conectado. Não há envio, importação de contatos
-                    ou automação ativa.
+                    <MessageSquare size={20} />O botão abre o WhatsApp com o
+                    texto pronto. Não há envio automático, importação de
+                    contatos ou API de mensagens.
                   </div>
                 </section>
                 <section className="panel settings">
@@ -1611,11 +1581,13 @@ export default function App() {
               : completionAppointment
                 ? "Como o cliente pagou?"
                 : campaignClient
-                  ? "Revisar lembrete"
+                  ? "Revisar mensagem do WhatsApp"
                   : modal === "appointment"
                     ? "Novo atendimento"
                     : modal === "client"
-                      ? "Novo cliente"
+                      ? editingClient
+                        ? "Editar cliente"
+                        : "Novo cliente"
                       : editingProcedure
                         ? "Editar procedimento"
                         : "Novo procedimento"}
@@ -1702,7 +1674,9 @@ export default function App() {
                     );
                     setClients((items) =>
                       items.map((client) =>
-                        client.name === completionAppointment.client &&
+                        (client.id === completionAppointment.clientId ||
+                          (!completionAppointment.clientId &&
+                            client.name === completionAppointment.client)) &&
                         client.lastVisit < completionAppointment.date
                           ? { ...client, lastVisit: completionAppointment.date }
                           : client,
@@ -1739,40 +1713,79 @@ export default function App() {
         ) : campaignClient ? (
           <div className="modal-body">
             <p>
-              Cliente: <strong>{campaignClient.name}</strong>
+              <strong>{campaignClient.name}</strong>
+              <br />
+              {campaignClient.phone}
             </p>
-            <div className="message-preview">
-              {message.replaceAll("{nome}", campaignClient.name.split(" ")[0])}
-            </div>
-            <p>
-              Esta ação adiciona uma mensagem à fila para aprovação manual.
-              Nenhum envio ao WhatsApp será realizado.
+            <label>
+              Mensagem para o WhatsApp
+              <textarea
+                rows={5}
+                value={whatsappDraft}
+                onChange={(event) => {
+                  whatsappClicked.current = false;
+                  setWhatsappDraft(event.target.value);
+                }}
+              />
+            </label>
+            {whatsappError && (
+              <div className="form-error" role="alert">
+                {whatsappError}
+              </div>
+            )}
+            {whatsappRepeat && (
+              <div className="schedule-notice" role="status">
+                Esta mesma mensagem já teve abertura solicitada para este
+                cliente nos últimos 7 dias. O aplicativo não confirma se ela foi
+                enviada.
+              </div>
+            )}
+            <p className="availability-note">
+              Você será direcionado ao WhatsApp com o texto pronto. Revise o
+              destinatário e toque em Enviar no WhatsApp. Nada é enviado
+              automaticamente.
             </p>
-            <button
-              className="primary wide"
-              onClick={() => {
-                if (eligible.some((c) => c.id === campaignClient.id)) {
-                  setCampaigns([
-                    ...campaigns,
-                    {
-                      clientId: campaignClient.id,
-                      status: "pending",
-                      created: TODAY,
-                      message: message.replaceAll(
-                        "{nome}",
-                        campaignClient.name.split(" ")[0],
-                      ),
-                    },
-                  ]);
-                  setToast(
-                    "Lembrete na fila. Revise a aprovação manual abaixo.",
-                  );
+            <a
+              className={`primary wide whatsapp-link ${!whatsappAllowed ? "is-disabled" : ""}`}
+              href={whatsappURL || undefined}
+              tabIndex={whatsappAllowed ? 0 : -1}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-disabled={!whatsappAllowed}
+              onClick={(event) => {
+                if (
+                  !whatsappAllowed ||
+                  !campaignClient ||
+                  whatsappClicked.current
+                ) {
+                  event.preventDefault();
+                  return;
                 }
-                close();
+                whatsappClicked.current = true;
+                const openedAt = new Date().toISOString();
+                setCampaigns((items) => [
+                  ...items,
+                  {
+                    clientId: campaignClient.id,
+                    status: "opened",
+                    created: openedAt,
+                    openedAt,
+                    message: whatsappDraft.trim(),
+                  },
+                ]);
+                setToast(
+                  "Abertura do WhatsApp solicitada. O envio precisa ser feito no WhatsApp.",
+                );
               }}
             >
-              Adicionar à fila de aprovação
-            </button>
+              <MessageSquare size={18} />
+              Abrir no WhatsApp
+            </a>
+            <small>
+              Proteção local contra repetição do mesmo texto por 7 dias.
+              Registra apenas a solicitação de abertura, sem confirmação de
+              envio.
+            </small>
           </div>
         ) : (
           <form className="modal-body" onSubmit={save}>
@@ -1790,9 +1803,11 @@ export default function App() {
                 currentProfessional={currentProfessional}
                 clients={
                   admin
-                    ? clients
-                    : clients.filter((c) =>
-                        visible.some((a) => a.client === c.name),
+                    ? clients.filter((c) => !c.deletedAt)
+                    : clients.filter(
+                        (c) =>
+                          !c.deletedAt &&
+                          visible.some((a) => a.client === c.name),
                       )
                 }
                 admin={admin}
@@ -1802,11 +1817,22 @@ export default function App() {
               <>
                 <label>
                   Nome completo
-                  <input name="name" required maxLength={80} />
+                  <input
+                    name="name"
+                    defaultValue={editingClient?.name ?? ""}
+                    required
+                    maxLength={80}
+                  />
                 </label>
                 <label>
                   Telefone demonstrativo
-                  <input name="phone" required type="tel" maxLength={22} />
+                  <input
+                    name="phone"
+                    defaultValue={editingClient?.phone ?? ""}
+                    required
+                    type="tel"
+                    maxLength={22}
+                  />
                 </label>
                 <label>
                   Último atendimento
@@ -1815,11 +1841,15 @@ export default function App() {
                     type="date"
                     required
                     max={TODAY}
-                    defaultValue={TODAY}
+                    defaultValue={editingClient?.lastVisit ?? TODAY}
                   />
                 </label>
                 <label className="check-row">
-                  <input type="checkbox" name="consent" />
+                  <input
+                    type="checkbox"
+                    name="consent"
+                    defaultChecked={editingClient?.consent ?? false}
+                  />
                   Autorizou receber lembretes (registro demonstrativo)
                 </label>
               </>

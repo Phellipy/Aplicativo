@@ -72,3 +72,11 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Filtros Dia/Semana/Ano e profissional verificados. Ocupação anual pequena aparece como 0,04%, sem ser arredondada a zero.
 - Desktop e viewport de 390px inspecionados. Página manteve 390px; gráficos de evolução usam área de rolagem própria de 480px dentro de 352px.
 - Limites explícitos: tempo estimado pela duração, jornada atual aplicada ao histórico, disponibilidade do período inteiro e recebimentos agrupados pela data do atendimento. Não há cronômetro, conciliação financeira ou metas automáticas.
+
+## Edição/exclusão e WhatsApp manual
+
+- Build e 110 testes aprovados, incluindo 13 cenários novos: editar cliente mantendo histórico, evitar duplicação de nomes, restringir operações ao administrador, exclusão/restauração de clientes e profissionais, remoção da disponibilidade, URL com DDI/texto, autorização, número inválido e repetição por sete dias.
+- Navegador em localhost isolado: nome do cliente editado; prévia do WhatsApp exibiu `wa.me` com telefone e texto codificado. O link foi inspecionado sem abrir conversa externa ou enviar mensagem.
+- Cliente excluído apareceu em Excluídos e foi restaurado. Profissional excluído foi restaurado desabilitado, mantendo serviço e repasse.
+- Lista de clientes inspecionada em 390px, sem transbordamento horizontal, com três ações legíveis. Viewport temporário restaurado.
+- Mensagens nunca são marcadas como enviadas. A proteção local registra somente a solicitação de abertura; não existe retorno de entrega ou confirmação de envio.
