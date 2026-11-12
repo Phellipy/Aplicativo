@@ -1,3 +1,4 @@
+import { createRecurringAppointments } from "./recurrence";
 import AgendaStack from "./AgendaStack";
 import MetricsPage from "./MetricsPage";
 import { occupationStats, hours, formatPercentage } from "./metrics";
@@ -494,27 +495,47 @@ export default function App() {
     }
     if (modal === "appointment") {
       try {
-        const created = createAppointment(
-          {
-            id: Date.now(),
-            client: str("client"),
-            professional: admin ? str("professional") : currentProfessional,
-            date: str("date"),
-            time: str("time"),
-          },
-          f.getAll("procedureIds").map(Number),
-          bookingProcedures,
-          appointments,
-          workingSchedules,
-        );
+        const input = {
+          id: Date.now(),
+          client: str("client"),
+          professional: admin ? str("professional") : currentProfessional,
+          date: str("date"),
+          time: str("time"),
+        };
+        const ids = f.getAll("procedureIds").map(Number);
+        const created = f.has("recurring")
+          ? createRecurringAppointments(
+              input,
+              str("recurrenceEnd"),
+              f.getAll("weekdays").map(Number),
+              ids,
+              bookingProcedures,
+              appointments,
+              workingSchedules,
+            )
+          : [
+              createAppointment(
+                input,
+                ids,
+                bookingProcedures,
+                appointments,
+                workingSchedules,
+              ),
+            ];
         setAppointments([
           ...appointments,
-          {
-            ...created,
-            clientId: clients.find((client) => client.name === created.client)
-              ?.id,
-          },
+          ...created.map((appointment) => ({
+            ...appointment,
+            clientId: clients.find(
+              (client) => client.name === appointment.client,
+            )?.id,
+          })),
         ]);
+        close();
+        setToast(
+          `${created.length} atendimento(s) agendado(s) neste navegador.`,
+        );
+        return;
       } catch (error) {
         setFormError((error as Error).message);
         return;

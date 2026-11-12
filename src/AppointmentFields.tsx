@@ -1,3 +1,4 @@
+import { recurrenceDates } from "./recurrence";
 import { useState } from "react";
 import {
   getAvailableTimes,
@@ -36,6 +37,18 @@ export default function AppointmentFields({
   const [selected, setSelected] = useState<number[]>([]);
   const [date, setDate] = useState(initialDate),
     [time, setTime] = useState("");
+  const [recurring, setRecurring] = useState(false);
+  const [weekdays, setWeekdays] = useState<number[]>([]);
+  const [until, setUntil] = useState("");
+  let dates: string[] = [],
+    recurrenceError = "";
+  if (recurring) {
+    try {
+      dates = recurrenceDates(date, until, weekdays);
+    } catch (error) {
+      recurrenceError = (error as Error).message;
+    }
+  }
   const enabled = procedures.filter((p) =>
     p.professionals?.includes(professional),
   );
@@ -47,7 +60,7 @@ export default function AppointmentFields({
     procedures,
     schedules,
     professional,
-    date,
+    recurring ? (dates[0] ?? date) : date,
     duration,
   );
   return (
@@ -116,9 +129,84 @@ export default function AppointmentFields({
         </span>
         <strong>{money(price)}</strong>
       </div>
+      <fieldset className="recurrence-fields">
+        <legend>Repetição</legend>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            name="recurring"
+            checked={recurring}
+            onChange={(event) => {
+              setRecurring(event.target.checked);
+              setTime("");
+            }}
+          />
+          Atendimento recorrente
+        </label>
+        {recurring && (
+          <>
+            <p>
+              Repete semanalmente no mesmo horário, com o mesmo profissional e
+              procedimentos.
+            </p>
+            <div className="recurrence-weekdays">
+              {[
+                "Domingo",
+                "Segunda",
+                "Terça",
+                "Quarta",
+                "Quinta",
+                "Sexta",
+                "Sábado",
+              ].map((name, day) => (
+                <label className="check-row" key={day}>
+                  <input
+                    type="checkbox"
+                    name="weekdays"
+                    value={day}
+                    checked={weekdays.includes(day)}
+                    onChange={(event) => {
+                      setWeekdays(
+                        event.target.checked
+                          ? [...weekdays, day]
+                          : weekdays.filter((value) => value !== day),
+                      );
+                      setTime("");
+                    }}
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
+            <label>
+              Repetir até
+              <input
+                type="date"
+                name="recurrenceEnd"
+                required
+                min={date}
+                value={until}
+                onChange={(event) => {
+                  setUntil(event.target.value);
+                  setTime("");
+                }}
+              />
+            </label>
+            <p role="status">
+              {recurrenceError ||
+                `${dates.length} atendimento(s), de ${dates[0].split("-").reverse().join("/")} até ${dates[dates.length - 1].split("-").reverse().join("/")}.`}
+            </p>
+            <small>
+              Máximo de um ano. Se houver conflito ou ausência em qualquer data,
+              nenhum atendimento será salvo. Ajuste o período ou horário para
+              continuar.
+            </small>
+          </>
+        )}
+      </fieldset>
       <div className="form-row">
         <label>
-          Data
+          {recurring ? "A partir de" : "Data"}
           <input
             name="date"
             type="date"
@@ -131,13 +219,17 @@ export default function AppointmentFields({
           />
         </label>
         <label>
-          Horário disponível
+          {recurring ? "Horário (primeira ocorrência)" : "Horário disponível"}
           <select
             name="time"
             required
             value={available.includes(time) ? time : ""}
             onChange={(e) => setTime(e.target.value)}
-            disabled={!chosen.length || !available.length}
+            disabled={
+              !chosen.length ||
+              !available.length ||
+              (recurring && !!recurrenceError)
+            }
           >
             <option value="">Selecione um horário</option>
             {available.map((slot) => (

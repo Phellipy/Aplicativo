@@ -80,3 +80,5 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Cliente excluído apareceu em Excluídos e foi restaurado. Profissional excluído foi restaurado desabilitado, mantendo serviço e repasse.
 - Lista de clientes inspecionada em 390px, sem transbordamento horizontal, com três ações legíveis. Viewport temporário restaurado.
 - Mensagens nunca são marcadas como enviadas. A proteção local registra somente a solicitação de abertura; não existe retorno de entrega ou confirmação de envio.
+
+Recorrência semanal: build aprovado e 121 testes passando. Os 11 novos casos cobrem múltiplos dias, limites de período, virada de ano, IDs únicos, soma dos serviços e bloqueio integral em conflitos/ausências. Todas as ocorrências são materializadas no armazenamento local; não existe tarefa automática em segundo plano.
