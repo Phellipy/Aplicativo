@@ -1,4 +1,6 @@
 import AgendaStack from "./AgendaStack";
+import ProfessionalsPanel from "./ProfessionalsPanel";
+import { verifyDemoCredential } from "./demoAccess";
 import PeriodControls from "./PeriodControls";
 import AgendaPeriod from "./AgendaPeriod";
 import AppointmentFields, { RescheduleFields } from "./AppointmentFields";
@@ -50,7 +52,15 @@ import {
   initialAppointments,
   initialClients,
   initialProcedures,
-  professionals,
+  professionals as demoProfessionals,
+  initialProfessionalRecords,
+  assignedProcedures,
+  cleanProcedure,
+  createProfessional,
+  updateProfessional,
+  effectiveSchedules,
+  defaultSchedule,
+  type ProfessionalRecord,
   TODAY,
   money,
   procedureRate,
@@ -144,6 +154,66 @@ export default function App() {
     "navalha-v01-work-schedules",
     initialWorkSchedules,
   );
+  const [records, setRecords] = useStored<ProfessionalRecord[]>(
+    "navalha-v01-professional-records",
+    initialProfessionalRecords(procedures),
+  );
+  const professionals = records.map((record) => record.name);
+  const activeProfessionals = records
+    .filter((record) => record.active)
+    .map((record) => record.name);
+  const bookingProcedures = assignedProcedures(procedures, records);
+  const workingSchedules = effectiveSchedules(schedules, records);
+  const [currentProfessional, setCurrentProfessional] = useState(
+    demoProfessionals[0],
+  );
+  const [loginName, setLoginName] = useState(demoProfessionals[0]),
+    [loginPassword, setLoginPassword] = useState(""),
+    [loginError, setLoginError] = useState(""),
+    [loginBusy, setLoginBusy] = useState(false);
+  const [editingProcedure, setEditingProcedure] = useState<Procedure | null>(
+    null,
+  );
+  useEffect(() => {
+    setProcedures((items) =>
+      items.some(
+        (p) =>
+          p.professionals !== undefined ||
+          p.commission !== undefined ||
+          p.individualRates !== undefined,
+      )
+        ? items.map(cleanProcedure)
+        : items,
+    );
+  }, []);
+  async function enterProfessional() {
+    const record = records.find(
+      (record) => record.name === loginName && record.active,
+    );
+    if (!record) {
+      setLoginError("Selecione um profissional habilitado.");
+      return;
+    }
+    setLoginBusy(true);
+    try {
+      if (
+        record.credential &&
+        !(await verifyDemoCredential(loginPassword, record.credential))
+      ) {
+        setLoginError("Senha demonstrativa incorreta.");
+        return;
+      }
+      setCurrentProfessional(record.name);
+      setLoginPassword("");
+      setLoginError("");
+      setPage("Dashboard");
+      setRole("professional");
+    } catch {
+      setLoginError("A verificação local não está disponível neste navegador.");
+    } finally {
+      setLoginBusy(false);
+    }
+  }
   const [query, setQuery] = useState(""),
     [date, setDate] = useState(TODAY),
     [person, setPerson] = useState("Todos"),
@@ -195,7 +265,11 @@ export default function App() {
     allowed = pages.filter(
       (p) => admin || !["Clientes", "Profissionais"].includes(p.name),
     );
-  const visible = visibleAppointments(appointments, role || "professional");
+  const visible = visibleAppointments(
+    appointments,
+    role || "professional",
+    currentProfessional,
+  );
   const scoped = visible.filter(
       (a) => person === "Todos" || a.professional === person,
     ),
@@ -212,16 +286,24 @@ export default function App() {
   const capacity = useMemo(
     () =>
       workCapacity(
-        schedules,
+        workingSchedules,
         admin
           ? person === "Todos"
             ? professionals
             : [person]
-          : [professionals[0]],
+          : [currentProfessional],
         dashboardPeriod,
         dashboardDate,
       ),
-    [schedules, admin, person, dashboardPeriod, dashboardDate],
+    [
+      schedules,
+      records,
+      admin,
+      person,
+      currentProfessional,
+      dashboardPeriod,
+      dashboardDate,
+    ],
   );
   const completed = today.filter((a) => a.status === "Concluído"),
     revenue = receivedTotal(completed);
@@ -242,6 +324,7 @@ export default function App() {
     setCampaignClient(null);
     setCompletionAppointment(null);
     setRescheduleTarget(null);
+    setEditingProcedure(null);
   };
   function moveAppointment(
     appointment: Appointment,
@@ -257,7 +340,8 @@ export default function App() {
         newDate,
         newTime,
         role,
-        schedules,
+        workingSchedules,
+        currentProfessional,
       );
       setAppointments(updated);
       setDate(newDate);
@@ -293,22 +377,51 @@ export default function App() {
       ]);
     }
     if (modal === "procedure") {
-      const assigned = f.getAll("professionals").map(String);
-      if (!assigned.length) {
-        setFormError("Selecione ao menos um profissional.");
+      if (!admin) {
+        setFormError("Somente o administrador altera procedimentos.");
         return;
       }
-      setProcedures([
-        ...procedures,
-        {
-          id: Date.now(),
-          name: str("name"),
-          price: Number(f.get("price")),
-          duration: Number(f.get("duration")),
-          commission: Number(f.get("commission")),
-          professionals: assigned,
-        },
-      ]);
+      const updated: Procedure = {
+        id: editingProcedure?.id ?? Date.now(),
+        name: str("name"),
+        price: Number(f.get("price")),
+        duration: Number(f.get("duration")),
+      };
+      if (
+        !updated.name ||
+        updated.duration < 15 ||
+        updated.duration > 480 ||
+        updated.duration % 15 !== 0 ||
+        updated.price < 0 ||
+        !Number.isFinite(updated.price)
+      ) {
+        setFormError("Informe nome, valor e duração válidos.");
+        return;
+      }
+      if (editingProcedure) {
+        setAppointments((items) =>
+          items.map((a) =>
+            !a.services?.length && a.procedure === editingProcedure.name
+              ? {
+                  ...a,
+                  duration: appointmentDuration(a, procedures),
+                  services: [
+                    {
+                      procedureId: editingProcedure.id,
+                      name: a.procedure,
+                      duration: appointmentDuration(a, procedures),
+                      price: a.value,
+                      commissionRate: a.commissionRate,
+                    },
+                  ],
+                }
+              : a,
+          ),
+        );
+        setProcedures((items) =>
+          items.map((p) => (p.id === updated.id ? updated : p)),
+        );
+      } else setProcedures((items) => [...items, updated]);
     }
     if (modal === "appointment") {
       try {
@@ -316,14 +429,14 @@ export default function App() {
           {
             id: Date.now(),
             client: str("client"),
-            professional: admin ? str("professional") : professionals[0],
+            professional: admin ? str("professional") : currentProfessional,
             date: str("date"),
             time: str("time"),
           },
           f.getAll("procedureIds").map(Number),
-          procedures,
+          bookingProcedures,
           appointments,
-          schedules,
+          workingSchedules,
         );
         setAppointments([...appointments, created]);
       } catch (error) {
@@ -388,18 +501,58 @@ export default function App() {
             <button className="primary wide" onClick={() => setRole("admin")}>
               Entrar como administrador <ArrowUpRight size={18} />
             </button>
-            <button
-              className="secondary wide"
-              onClick={() => setRole("professional")}
-            >
-              Explorar como Rafael Moura <ChevronRight size={18} />
-            </button>
+            <div className="login-professional">
+              <label>
+                Perfil profissional
+                <select
+                  value={
+                    activeProfessionals.includes(loginName) ? loginName : ""
+                  }
+                  onChange={(event) => {
+                    setLoginName(event.target.value);
+                    setLoginPassword("");
+                    setLoginError("");
+                  }}
+                >
+                  <option value="" disabled>
+                    Selecione um profissional
+                  </option>
+                  {activeProfessionals.map((name) => (
+                    <option key={name}>{name}</option>
+                  ))}
+                </select>
+              </label>
+              {records.find((p) => p.name === loginName)?.credential && (
+                <label>
+                  Senha de demonstração
+                  <input
+                    type="password"
+                    value={loginPassword}
+                    onChange={(event) => setLoginPassword(event.target.value)}
+                    autoComplete="off"
+                  />
+                </label>
+              )}
+              {loginError && (
+                <div className="form-error" role="alert">
+                  {loginError}
+                </div>
+              )}
+              <button
+                className="secondary wide"
+                disabled={loginBusy || !activeProfessionals.includes(loginName)}
+                onClick={enterProfessional}
+              >
+                {loginBusy ? "Verificando…" : `Explorar como ${loginName}`}
+                <ChevronRight size={18} />
+              </button>
+            </div>
             <div className="notice">
               <ShieldCheck size={20} />
               <span>
                 Ambiente demonstrativo com dados fictícios. A escolha de perfil
-                não autentica usuários nem garante segurança. Nenhuma credencial
-                é necessária.
+                não garante segurança. Senhas configuradas pelo administrador
+                são verificadas apenas localmente e não protegem os dados.
               </span>
             </div>
           </div>
@@ -600,9 +753,9 @@ export default function App() {
             <small>Dados fictícios · versão 0.1</small>
           </div>
           <div className="account">
-            <Avatar name={admin ? "Administrador" : professionals[0]} />
+            <Avatar name={admin ? "Administrador" : currentProfessional} />
             <div>
-              <strong>{admin ? "Administrador" : "Rafael Moura"}</strong>
+              <strong>{admin ? "Administrador" : currentProfessional}</strong>
               <small>
                 {admin
                   ? "Acesso demonstrativo completo"
@@ -658,7 +811,7 @@ export default function App() {
             >
               <Bell size={19} />
             </button>
-            <Avatar name={admin ? "Administrador" : professionals[0]} />
+            <Avatar name={admin ? "Administrador" : currentProfessional} />
           </div>
         </header>
         <main className="content">
@@ -671,7 +824,7 @@ export default function App() {
                 {page === "Dashboard"
                   ? admin
                     ? "Seu negócio, em dia."
-                    : "Bom dia, Rafael."
+                    : `Bom dia, ${currentProfessional.split(" ")[0]}.`
                   : page}
               </h1>
               <p>
@@ -690,7 +843,7 @@ export default function App() {
                       : "Acompanhe seus ganhos e repasses demonstrativos.",
                     Profissionais: "Uma equipe alinhada faz toda a diferença.",
                     Procedimentos:
-                      "Serviços, preços e repasses em um único lugar.",
+                      "Nome, duração e valor dos serviços do estabelecimento.",
                     Configurações:
                       "Ajuste a experiência do seu estabelecimento.",
                   }[page]
@@ -875,7 +1028,7 @@ export default function App() {
                     <span className="badge blue">{reportLabel}</span>
                   </div>
                   <div className="team-list">
-                    {(admin ? professionals : [professionals[0]]).map(
+                    {(admin ? professionals : [currentProfessional]).map(
                       (p, i) => (
                         <div className="team-row" key={p}>
                           <Avatar name={p} />
@@ -1037,14 +1190,14 @@ export default function App() {
                       appointments={scoped.filter((a) => a.date === date)}
                       allAppointments={appointments}
                       procedures={procedures}
-                      schedules={schedules}
+                      schedules={workingSchedules}
                       date={date}
                       laneNames={
                         admin
                           ? person === "Todos"
                             ? professionals
                             : [person]
-                          : [professionals[0]]
+                          : [currentProfessional]
                       }
                       admin={admin}
                       expanded={expandedAppointment}
@@ -1239,82 +1392,40 @@ export default function App() {
             </>
           )}
           {page === "Profissionais" && admin && (
-            <div className="professional-grid">
-              {professionals.map((p) => (
-                <section className="panel professional" key={p}>
-                  <Avatar name={p} />
-                  <h2>{p}</h2>
-                  <Badge text="Ativo" />
-                  <p>Profissional · Jornada configurável</p>
-                  <details className="schedule-details">
-                    <summary>Jornada e ausências</summary>
-                    <WorkScheduleEditor
-                      schedule={schedules.find((s) => s.professional === p)!}
-                      onSave={(updated) =>
-                        setSchedules((items) =>
-                          items.map((s) =>
-                            s.professional === p ? updated : s,
-                          ),
-                        )
-                      }
-                      appointments={appointments}
-                      procedures={procedures}
-                    />
-                  </details>
-                  <div className="divider" />
-                  <h3>Procedimentos habilitados</h3>
-                  {procedures
-                    .filter((s) => s.professionals.includes(p))
-                    .map((s) => (
-                      <div className="service-line" key={s.id}>
-                        <div>
-                          <strong>{s.name}</strong>
-                          <small>
-                            {s.duration} min · {money(s.price)}
-                          </small>
-                        </div>
-                        <label className="rate-label">
-                          Repasse %
-                          <input
-                            aria-label={`Repasse de ${s.name} para ${p}`}
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={procedureRate(s, p)}
-                            onChange={(e) => {
-                              const rate = Number(e.target.value);
-                              if (rate >= 0 && rate <= 100)
-                                setProcedures(
-                                  procedures.map((x) =>
-                                    x.id === s.id
-                                      ? {
-                                          ...x,
-                                          individualRates: {
-                                            ...x.individualRates,
-                                            [p]: rate,
-                                          },
-                                        }
-                                      : x,
-                                  ),
-                                );
-                            }}
-                          />
-                        </label>
-                      </div>
-                    ))}
-                  <div className="notice">
-                    Visualiza sua agenda, seus serviços e seus ganhos na
-                    demonstração.
-                  </div>
-                  <button
-                    className="secondary wide"
-                    onClick={() => navigate("Procedimentos")}
-                  >
-                    Configurar procedimentos <ChevronRight size={16} />
-                  </button>
-                </section>
-              ))}
-            </div>
+            <ProfessionalsPanel
+              records={records}
+              procedures={procedures}
+              schedules={schedules}
+              appointments={appointments}
+              onCreate={(name) => {
+                const created = createProfessional(
+                  records,
+                  name,
+                  Date.now(),
+                  role!,
+                );
+                setRecords((items) => [...items, created]);
+                setSchedules((items) => [
+                  ...items,
+                  defaultSchedule(created.name),
+                ]);
+                setToast(
+                  "Profissional cadastrado. Configure seus procedimentos e repasses.",
+                );
+              }}
+              onUpdate={(updated) => {
+                setRecords(updateProfessional(records, updated, role!));
+                setToast("Configuração do profissional salva neste navegador.");
+              }}
+              onSchedule={(updated) => {
+                if (admin)
+                  setSchedules((items) =>
+                    items.map((s) =>
+                      s.professional === updated.professional ? updated : s,
+                    ),
+                  );
+              }}
+            />
           )}
           {page === "Procedimentos" && (
             <>
@@ -1322,14 +1433,18 @@ export default function App() {
                 <Scissors size={20} />
                 <span>
                   {admin
-                    ? "Preços e repasses são definidos pelo estabelecimento. Alterações valem para novos atendimentos; os já agendados mantêm seu percentual."
-                    : "Apenas os serviços habilitados para Rafael Moura são exibidos."}
+                    ? "Cadastre e edite nome, duração e valor. As alterações valem para novos atendimentos; os anteriores preservam os dados combinados."
+                    : "Seus procedimentos habilitados, com os valores definidos pelo estabelecimento."}
                 </span>
               </div>
               <div className="procedure-grid">
                 {procedures
                   .filter(
-                    (p) => admin || p.professionals.includes(professionals[0]),
+                    (p) =>
+                      admin ||
+                      bookingProcedures
+                        .find((proc) => proc.id === p.id)
+                        ?.professionals?.includes(currentProfessional),
                   )
                   .map((p) => (
                     <section className="panel procedure" key={p.id}>
@@ -1337,76 +1452,24 @@ export default function App() {
                         <span className="service-icon">
                           <Scissors size={22} />
                         </span>
-                        <Badge text="Ativo" />
                       </div>
                       <h2>{p.name}</h2>
                       <p>
-                        <Clock size={14} /> {p.duration} minutos
+                        <Clock size={14} />
+                        {p.duration} minutos
                       </p>
                       <strong className="price">{money(p.price)}</strong>
-                      <div className="divider" />
-                      <label>
-                        Repasse padrão (%){" "}
-                        {admin ? (
-                          <input
-                            aria-label={`Repasse de ${p.name}`}
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={p.commission}
-                            onChange={(e) => {
-                              const n = Number(e.target.value);
-                              if (n >= 0 && n <= 100)
-                                setProcedures(
-                                  procedures.map((x) =>
-                                    x.id === p.id ? { ...x, commission: n } : x,
-                                  ),
-                                );
-                            }}
-                          />
-                        ) : (
-                          <strong>{p.commission}%</strong>
-                        )}
-                      </label>
-                      <small>
-                        Ganho por atendimento:{" "}
-                        {money((p.price * p.commission) / 100)}
-                      </small>
-                      <h3>Profissionais habilitados</h3>
                       {admin && (
-                        <small>
-                          Repasses individuais podem ser ajustados em
-                          Profissionais.
-                        </small>
-                      )}
-                      {admin ? (
-                        professionals.map((prof) => (
-                          <label className="check-row" key={prof}>
-                            <input
-                              type="checkbox"
-                              checked={p.professionals.includes(prof)}
-                              onChange={(e) =>
-                                setProcedures(
-                                  procedures.map((x) =>
-                                    x.id === p.id
-                                      ? {
-                                          ...x,
-                                          professionals: e.target.checked
-                                            ? [...x.professionals, prof]
-                                            : x.professionals.filter(
-                                                (n) => n !== prof,
-                                              ),
-                                        }
-                                      : x,
-                                  ),
-                                )
-                              }
-                            />
-                            {prof}
-                          </label>
-                        ))
-                      ) : (
-                        <p>{professionals[0]}</p>
+                        <button
+                          className="secondary wide procedure-edit"
+                          onClick={() => {
+                            setEditingProcedure(p);
+                            setModal("procedure");
+                          }}
+                        >
+                          Editar procedimento
+                          <ChevronRight size={16} />
+                        </button>
                       )}
                     </section>
                   ))}
@@ -1419,13 +1482,13 @@ export default function App() {
               <p>Configure somente a sua disponibilidade demonstrativa.</p>
               <WorkScheduleEditor
                 schedule={schedules.find(
-                  (s) => s.professional === professionals[0],
+                  (s) => s.professional === currentProfessional,
                 )!}
                 onSave={(updated) =>
                   setSchedules((items) =>
                     items.map((s) =>
-                      s.professional === professionals[0]
-                        ? { ...updated, professional: professionals[0] }
+                      s.professional === currentProfessional
+                        ? { ...updated, professional: currentProfessional }
                         : s,
                     ),
                   )
@@ -1531,7 +1594,9 @@ export default function App() {
                     ? "Novo atendimento"
                     : modal === "client"
                       ? "Novo cliente"
-                      : "Novo procedimento"}
+                      : editingProcedure
+                        ? "Editar procedimento"
+                        : "Novo procedimento"}
           </h2>
           <button className="icon" aria-label="Fechar" onClick={close}>
             <X />
@@ -1570,8 +1635,8 @@ export default function App() {
             <RescheduleFields
               appointment={rescheduleTarget}
               appointments={appointments}
-              procedures={procedures}
-              schedules={schedules}
+              procedures={bookingProcedures}
+              schedules={workingSchedules}
             />
             <small>
               Intervalos de 15 minutos. O profissional, o procedimento, o valor,
@@ -1697,8 +1762,10 @@ export default function App() {
             {modal === "appointment" ? (
               <AppointmentFields
                 appointments={appointments}
-                procedures={procedures}
-                schedules={schedules}
+                procedures={bookingProcedures}
+                schedules={workingSchedules}
+                professionalNames={activeProfessionals}
+                currentProfessional={currentProfessional}
                 clients={
                   admin
                     ? clients
@@ -1738,13 +1805,19 @@ export default function App() {
               <>
                 <label>
                   Nome do procedimento
-                  <input name="name" required maxLength={80} />
+                  <input
+                    name="name"
+                    defaultValue={editingProcedure?.name ?? ""}
+                    required
+                    maxLength={80}
+                  />
                 </label>
                 <div className="form-row">
                   <label>
                     Preço (R$)
                     <input
                       name="price"
+                      defaultValue={editingProcedure?.price}
                       type="number"
                       min="0"
                       step="0.01"
@@ -1755,6 +1828,7 @@ export default function App() {
                     Duração (min)
                     <input
                       name="duration"
+                      defaultValue={editingProcedure?.duration}
                       type="number"
                       min="15"
                       max="480"
@@ -1763,25 +1837,6 @@ export default function App() {
                     />
                   </label>
                 </div>
-                <label>
-                  Repasse (%)
-                  <input
-                    name="commission"
-                    type="number"
-                    min="0"
-                    max="100"
-                    required
-                  />
-                </label>
-                <fieldset>
-                  <legend>Profissionais habilitados</legend>
-                  {professionals.map((p) => (
-                    <label className="check-row" key={p}>
-                      <input type="checkbox" name="professionals" value={p} />
-                      {p}
-                    </label>
-                  ))}
-                </fieldset>
               </>
             )}
             <div className="modal-actions">

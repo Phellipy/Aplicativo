@@ -56,3 +56,10 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Arraste real na grade proporcional moveu 10:15 para 09:00, preservando o atendimento e respeitando a disponibilidade.
 - Navegação Início anual e Agenda Ano → Novembro → 11/11 verificada no navegador. Grade de 712px em área própria de 326px no celular de 390px, sem transbordamento da página.
 - Toque prolongado permanece implementado por Pointer Events; aparelhos físicos e uso simultâneo por múltiplos usuários não foram testados.
+
+## Separação de catálogo e configuração profissional
+
+- Build e 78 testes aprovados: migração de atribuições antigas, catálogo limpo, serviços inicialmente desabilitados em novos cadastros, cadastro/ativação/desativação, restrição administrativa de acesso/serviços/repasses, validação de percentuais, agenda e visibilidade de profissional novo.
+- Três testes de senha demonstrativa executados somente em memória: derivação com sal, verificação correta/incorreta, sais diferentes e rejeição de entrada curta. Nenhuma senha real, derivação ou sal de uso foi salvo no código.
+- Navegador em localhost isolado dos dados em 127.0.0.1: editado valor do catálogo; cadastrado profissional fictício, atribuídos serviço e repasse individual; janela de jornada inspecionada. Desabilitar removeu o nome da seleção de acesso; habilitar restaurou. Perfil novo mostrou apenas seu serviço, sem controles de edição ou repasse.
+- Janela de Acesso inspecionada. Não foi alterada nenhuma credencial real pelo agente; o formulário de senha é demonstrativo e deve usar exclusivamente dados fictícios.

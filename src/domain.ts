@@ -1,3 +1,4 @@
+import type { DemoCredential } from "./demoAccess";
 export type Role = "admin" | "professional";
 export const paymentMethods = [
   "Dinheiro",
@@ -58,9 +59,17 @@ export type Procedure = {
   name: string;
   duration: number;
   price: number;
-  professionals: string[];
-  commission: number;
+  /** Compatibilidade de importação dos registros v0.1 antigos. Novos cadastros têm somente nome, duração e preço. */
+  professionals?: string[];
+  commission?: number;
   individualRates?: Record<string, number>;
+};
+export type ProfessionalRecord = {
+  id: number;
+  name: string;
+  active: boolean;
+  services: { procedureId: number; enabled: boolean; commissionRate: number }[];
+  credential?: DemoCredential;
 };
 export type Campaign = {
   clientId: number;
@@ -198,10 +207,14 @@ export const initialAppointments: Appointment[] = [
     status: "Agendado",
   },
 ];
-export const visibleAppointments = (items: Appointment[], role: Role) =>
+export const visibleAppointments = (
+  items: Appointment[],
+  role: Role,
+  professional: string = professionals[0],
+) =>
   role === "admin"
     ? items
-    : items.filter((a) => a.professional === professionals[0]);
+    : items.filter((a) => a.professional === professional);
 export const eligibleClients = (
   clients: Client[],
   campaigns: Campaign[],
@@ -226,7 +239,7 @@ export const calculateCommission = (a: Appointment) =>
     : (a.value * a.commissionRate) / 100;
 
 export const procedureRate = (procedure: Procedure, professional: string) =>
-  procedure.individualRates?.[professional] ?? procedure.commission;
+  procedure.individualRates?.[professional] ?? procedure.commission ?? 0;
 export function hasConflict(
   items: Appointment[],
   procedures: Procedure[],
@@ -328,11 +341,13 @@ export function rescheduleAppointment(
   time: string,
   role: Role,
   schedules: WorkSchedule[] = initialWorkSchedules,
+  currentProfessional: string = professionals[0],
 ): Appointment[] {
   const appointment = appointments.find((item) => item.id === id);
   if (
     !appointment ||
-    (role === "professional" && appointment.professional !== professionals[0])
+    (role === "professional" &&
+      appointment.professional !== currentProfessional)
   )
     throw new Error("Atendimento indisponível para este perfil demonstrativo.");
   if (!canReschedule(appointment))
@@ -496,7 +511,11 @@ export function createAppointment(
   if (!ids.length || new Set(ids).size !== ids.length)
     throw new Error("Selecione um ou mais procedimentos sem repetição.");
   const selected = ids.map((id) => procedures.find((p) => p.id === id));
-  if (selected.some((p) => !p || !p.professionals.includes(input.professional)))
+  if (
+    selected.some(
+      (p) => !p || !(p.professionals ?? []).includes(input.professional),
+    )
+  )
     throw new Error(
       "Selecione apenas procedimentos habilitados para este profissional.",
     );
@@ -675,3 +694,121 @@ export function workCapacity(
     0,
   );
 }
+
+export function initialProfessionalRecords(
+  procedures: Procedure[],
+): ProfessionalRecord[] {
+  const names = [
+    ...new Set([
+      ...professionals,
+      ...procedures.flatMap((p) => p.professionals ?? []),
+    ]),
+  ];
+  return names.map((name, index) => ({
+    id: index + 1,
+    name,
+    active: true,
+    services: procedures
+      .filter((p) => p.professionals?.includes(name))
+      .map((p) => ({
+        procedureId: p.id,
+        enabled: true,
+        commissionRate: procedureRate(p, name),
+      })),
+  }));
+}
+export const cleanProcedure = (procedure: Procedure): Procedure => ({
+  id: procedure.id,
+  name: procedure.name,
+  duration: procedure.duration,
+  price: procedure.price,
+});
+export function assignedProcedures(
+  procedures: Procedure[],
+  records: ProfessionalRecord[],
+): Procedure[] {
+  return procedures.map((procedure) => ({
+    ...cleanProcedure(procedure),
+    professionals: records
+      .filter(
+        (record) =>
+          record.active &&
+          record.services.some(
+            (s) => s.procedureId === procedure.id && s.enabled,
+          ),
+      )
+      .map((record) => record.name),
+    individualRates: Object.fromEntries(
+      records.map((record) => [
+        record.name,
+        record.services.find((s) => s.procedureId === procedure.id)
+          ?.commissionRate ?? 0,
+      ]),
+    ),
+  }));
+}
+export function createProfessional(
+  records: ProfessionalRecord[],
+  name: string,
+  id: number,
+  role: Role,
+): ProfessionalRecord {
+  if (role !== "admin")
+    throw new Error("Somente o administrador pode cadastrar profissionais.");
+  const trimmed = name.trim();
+  if (trimmed.length < 2) throw new Error("Informe o nome do profissional.");
+  if (
+    records.some(
+      (p) =>
+        p.name.toLocaleLowerCase("pt-BR") ===
+        trimmed.toLocaleLowerCase("pt-BR"),
+    )
+  )
+    throw new Error("Já existe um profissional com este nome.");
+  return { id, name: trimmed, active: true, services: [] };
+}
+export function updateProfessional(
+  records: ProfessionalRecord[],
+  updated: ProfessionalRecord,
+  role: Role,
+): ProfessionalRecord[] {
+  if (role !== "admin")
+    throw new Error(
+      "Somente o administrador altera acesso, serviços e repasses.",
+    );
+  if (
+    updated.services.some(
+      (s) =>
+        !Number.isFinite(s.commissionRate) ||
+        s.commissionRate < 0 ||
+        s.commissionRate > 100,
+    )
+  )
+    throw new Error("O repasse deve ficar entre 0% e 100%.");
+  if (!records.some((p) => p.id === updated.id))
+    throw new Error("Profissional não encontrado.");
+  return records.map((p) =>
+    p.id === updated.id ? { ...updated, name: p.name } : p,
+  );
+}
+export function effectiveSchedules(
+  schedules: WorkSchedule[],
+  records: ProfessionalRecord[],
+): WorkSchedule[] {
+  return schedules.map((schedule) =>
+    records.some(
+      (record) => record.name === schedule.professional && record.active,
+    )
+      ? schedule
+      : {
+          ...schedule,
+          days: schedule.days.map((day) => ({ ...day, enabled: false })),
+        },
+  );
+}
+export const defaultSchedule = (name: string): WorkSchedule => ({
+  ...initialWorkSchedules[0],
+  professional: name,
+  days: initialWorkSchedules[0].days.map((day) => ({ ...day })),
+  restrictions: [],
+});

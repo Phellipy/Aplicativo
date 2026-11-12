@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   getAvailableTimes,
   appointmentDuration,
-  professionals,
   money,
   type Appointment,
   type Client,
@@ -22,13 +21,23 @@ export default function AppointmentFields({
   clients,
   admin,
   initialDate,
-}: BaseProps & { clients: Client[]; admin: boolean; initialDate: string }) {
-  const [professional, setProfessional] = useState(professionals[0]);
+  professionalNames,
+  currentProfessional,
+}: BaseProps & {
+  clients: Client[];
+  admin: boolean;
+  initialDate: string;
+  professionalNames: string[];
+  currentProfessional: string;
+}) {
+  const [professional, setProfessional] = useState(
+    admin ? (professionalNames[0] ?? "") : currentProfessional,
+  );
   const [selected, setSelected] = useState<number[]>([]);
   const [date, setDate] = useState(initialDate),
     [time, setTime] = useState("");
   const enabled = procedures.filter((p) =>
-    p.professionals.includes(professional),
+    p.professionals?.includes(professional),
   );
   const chosen = enabled.filter((p) => selected.includes(p.id));
   const duration = chosen.reduce((sum, p) => sum + p.duration, 0),
@@ -63,7 +72,7 @@ export default function AppointmentFields({
               setTime("");
             }}
           >
-            {professionals.map((p) => (
+            {professionalNames.map((p) => (
               <option key={p}>{p}</option>
             ))}
           </select>

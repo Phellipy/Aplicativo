@@ -2933,3 +2933,170 @@ fieldset .check-row input {
   padding: 4px 7px;
   display: block;
 }
+.login-professional {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+.login-professional .secondary {
+  margin-top: 0;
+}
+.procedure-edit {
+  margin-top: 22px;
+}
+.professionals-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.professional-list-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 17px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.professional-list-row:last-child {
+  border: 0;
+}
+.professional-name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  gap: 5px;
+  padding: 8px 0;
+  background: transparent;
+  color: #35465a;
+  min-height: 44px;
+}
+.professional-name strong {
+  font-size: 14px;
+}
+.professional-name:hover strong {
+  color: var(--blue);
+  text-decoration: underline;
+}
+.professional-dialog {
+  width: 720px;
+}
+.professional-tabs {
+  display: flex;
+  gap: 5px;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  flex-wrap: wrap;
+}
+.professional-tabs button {
+  padding: 10px 14px;
+  min-height: 44px;
+  border-radius: 7px;
+  background: #f2f4f7;
+  color: #67778b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.professional-tabs button[aria-pressed="true"] {
+  background: #e4effc;
+  color: #1764ab;
+}
+.professional-access-form,
+.professional-services-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.professional-access-form > .primary,
+.professional-services-form > .primary {
+  align-self: flex-start;
+}
+.professional-service-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.professional-service-row > .check-row {
+  flex: 1;
+  font-size: 12px;
+}
+.professional-service-row .check-row span {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.professional-service-row > label:last-child {
+  width: 95px;
+  font-size: 10px;
+}
+.professional-service-row small {
+  font-size: 10px;
+}
+.professional-service-row input[type="number"] {
+  width: 95px;
+}
+.professional-dialog .work-editor {
+  margin: 0;
+}
+.professional-dialog .badge {
+  align-self: flex-start;
+}
+@media (max-width: 760px) {
+  .professional-list-row {
+    gap: 10px;
+    padding: 12px;
+    flex-wrap: wrap;
+  }
+  .professional-list-row > .avatar {
+    display: none;
+  }
+  .professional-name {
+    min-width: 140px;
+  }
+  .professional-list-row > .secondary {
+    font-size: 10px;
+    padding: 9px;
+  }
+  .professional-list-row > .icon {
+    width: 32px;
+  }
+  .professional-tabs {
+    padding: 10px 12px;
+    gap: 4px;
+  }
+  .professional-tabs button {
+    font-size: 10px;
+    padding: 8px 10px;
+  }
+  .professional-service-row {
+    gap: 10px;
+  }
+  .professional-service-row > .check-row {
+    font-size: 11px;
+  }
+  .professionals-toolbar {
+    flex-wrap: wrap;
+  }
+}
+.professional-service-row .check-row {
+  margin: 0;
+  min-width: 0;
+  min-height: 44px;
+}
+.professional-service-row .check-row input {
+  width: 18px;
+  height: 18px;
+  min-height: 18px;
+  flex: 0 0 18px;
+  accent-color: var(--blue);
+}
+.professional-service-row .check-row span {
+  min-width: 0;
+}

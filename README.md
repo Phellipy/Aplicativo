@@ -18,20 +18,20 @@ npm test
 npm run build
 ```
 
-O build gera `dist/`. Nenhuma credencial é necessária. Escolha **Administrador** ou **Rafael Moura** na tela de entrada. Não digite dados reais: a aplicação é uma demonstração.
+O build gera `dist/`. O administrador demonstrativo entra sem credencial. Selecione um profissional ativo para explorar seu perfil; quando o administrador configurar uma senha de demonstração, ela é verificada localmente. Não digite dados reais: a aplicação é uma demonstração.
 
 ## Módulos e fluxos
 
-- **Login**: seleção explícita de perfil demonstrativo, sem senha ou autenticação simulada.
+- **Login**: seleção explícita de perfil demonstrativo e verificação local de senha fictícia, quando configurada pelo administrador. Não representa autenticação segura.
 - **Dashboard**: períodos Hoje, Mês e Ano, indicadores derivados dos atendimentos e da jornada cadastrada, filtros por profissional, resumo de valores e alertas de reativação.
 - **Agenda**: Lista ou Pilha, períodos Hoje/Mês/Ano, cadastro com múltiplos procedimentos, horários filtrados por jornada e ausências, validação de habilitação e sobreposição de horários, confirmação explícita do atendimento, mudança de status e atualização da última visita ao concluir. Pagamento manual por dinheiro, Pix, cartão de crédito ou cartão de débito, com opção Não pago.
 - **Clientes**: cadastro, busca por nome/telefone, última visita, registro de autorização para lembretes e fila de reativação.
 - **Financeiro**: valores recebidos de serviços concluídos com pagamento registrado, repasses de todos os concluídos e saldo antes de despesas (recebido menos repasses dos serviços pagos). O saldo não é apresentado como lucro.
-- **Profissionais**: equipe demonstrativa, procedimentos habilitados, repasses individuais, jornada por dia da semana e restrições por data/intervalo.
-- **Procedimentos**: cadastro de serviço com preço/duração, associação aos profissionais e percentual padrão. Valores e percentuais são fixados ao criar o atendimento; ajustes do cadastro afetam somente novos atendimentos.
+- **Profissionais**: cadastro, habilitação/desabilitação e janela individual com Acesso, Jornada e Procedimentos e repasses.
+- **Procedimentos**: cadastro e edição somente de nome, duração e valor. Habilitação de serviços e repasses são configurados exclusivamente na janela do profissional pelo administrador. Novos atendimentos fixam os dados do serviço e do repasse.
 - **Configurações**: administrador edita e pré-visualiza a mensagem de retorno; profissional configura sua própria jornada e ausências.
 
-O administrador visualiza os módulos completos. O perfil Rafael visualiza somente seus atendimentos, seus indicadores, seus procedimentos e seus ganhos. **Esses filtros são apenas demonstração de interface: todos os dados estão no navegador e não existe autorização segura.**
+O administrador visualiza os módulos completos. Cada profissional ativo visualiza somente seus atendimentos, seus indicadores, seus procedimentos, seus ganhos e sua jornada. **Esses filtros são apenas demonstração de interface: todos os dados estão no navegador e não existe autorização segura.**
 
 ## Reativação e WhatsApp
 
@@ -43,7 +43,7 @@ A data de referência demonstrativa é **11/11/2026**, identificada na interface
 
 - Dados fictícios persistidos no `localStorage`, com chaves `navalha-v01-*`; perfil de entrada não persiste. Para reiniciar a demonstração, remova essas chaves nas ferramentas do navegador.
 - Sem backend, banco de dados, autenticação, controle de acesso real, auditoria ou sincronização entre dispositivos. Não usar com dados reais.
-- Equipe inicial fixa; cadastro de novas identidades profissionais, despesas, transações financeiras, relatórios exportáveis e permissões no servidor ficam para versões futuras.
+- Cadastro de profissionais é local e demonstrativo. Autenticação/autorização no servidor, despesas, transações financeiras e relatórios exportáveis ficam para versões futuras.
 - Agenda em Lista/Pilha, com calendário mensal e resumo anual. Sem visão semanal, troca de profissional pelo arraste ou edição completa do atendimento.
 - Repasses percentuais; valores fixos, descontos, pagamento e conciliação não implementados.
 - Persistência requer armazenamento habilitado no navegador. Limpar os dados remove também o histórico de bloqueio de campanhas. Nenhuma garantia contra duplicação em múltiplas abas/dispositivos.
@@ -57,6 +57,8 @@ Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram a
 - `src/domain.ts`: tipos, dados fictícios e regras de períodos, disponibilidade, múltiplos serviços, visibilidade, reativação, conflitos e repasses.
 - `src/AppointmentFields.tsx`: seleção múltipla e horários disponíveis; reagendamento com disponibilidade.
 - `src/WorkScheduleEditor.tsx`: jornada semanal e restrições pontuais.
+- `src/ProfessionalsPanel.tsx`: cadastro, situação e janela de configuração do profissional.
+- `src/demoAccess.ts`, `src/demoAccess.test.ts`: derivação/verificação local de senhas fictícias e testes.
 - `src/AgendaStack.tsx`: escala temporal proporcional, colunas por profissional e arraste.
 - `src/PeriodControls.tsx`, `src/AgendaPeriod.tsx`: períodos e navegação de calendário.
 - `src/domain.test.ts`: testes das regras principais com Vitest.
@@ -69,7 +71,7 @@ Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram a
 1. Entre como administrador, filtre o dashboard e abra a agenda.
 2. Cadastre um horário livre; tente repetir o mesmo horário/profissional e veja o bloqueio.
 3. Conclua um atendimento e confira o financeiro e a última visita do cliente.
-4. Em Profissionais, altere um repasse; novos atendimentos usam o percentual e os anteriores mantêm o valor fixado.
+4. Em Profissionais, clique no nome e abra Procedimentos e repasses para alterar um percentual; novos atendimentos usam o percentual e os anteriores mantêm o valor fixado.
 5. Em Clientes, revise um lembrete e aprove na fila; recarregue e confira que não pode ser duplicado.
 6. Saia e entre como Rafael: outros profissionais e campanhas deixam de aparecer; Configurações exibe apenas a própria jornada.
 7. Reduza a largura para 390px e 768px; navegue pelo menu e pelos formulários usando toque/teclado.
@@ -98,7 +100,7 @@ Alterações persistem somente no navegador. Não há notificações, confirmaç
 
 Ao criar um atendimento, escolha o profissional e marque um ou mais procedimentos habilitados. A duração e o valor são somados; o preço, duração e repasse de cada serviço são fixados no atendimento. A lista de horários mostra somente intervalos em que todos os procedimentos cabem antes do fim da jornada, sem sobreposição com atendimentos ou ausências. Cancelados e ausências de clientes não ocupam horários futuros; registros concluídos mantêm o histórico de ocupação.
 
-Em **Profissionais → Jornada e ausências**, o administrador marca os dias ativos e define início/fim. A jornada demonstrativa inicial é segunda a sexta, 09h–18h; sábado, 09h–13h; domingo desmarcado. Alterações exigem **Salvar jornada semanal**. Desmarcar um dia bloqueia esse dia semanalmente. Para uma ocorrência isolada, use **Ausências e restrições**, com data e intervalo ou dia inteiro; adicione restrições também para pausas/almoço. É possível remover restrições pontuais.
+Em **Profissionais → clique no nome → Jornada**, o administrador marca os dias ativos e define início/fim. A jornada demonstrativa inicial é segunda a sexta, 09h–18h; sábado, 09h–13h; domingo desmarcado. Alterações exigem **Salvar jornada semanal**. Desmarcar um dia bloqueia esse dia semanalmente. Para uma ocorrência isolada, use **Ausências e restrições**, com data e intervalo ou dia inteiro; adicione restrições também para pausas/almoço. É possível remover restrições pontuais.
 
 O profissional configura apenas a própria disponibilidade em **Configurações**. Restrições novas não cancelam atendimentos existentes: a interface lista os afetados e marca-os para revisão. Novos agendamentos e reagendamentos/arraste já respeitam os bloqueios. A duração dos registros antigos sem cópia dos serviços usa o cadastro atual como compatibilidade; novos registros preservam a duração mesmo se o cadastro mudar.
 
@@ -107,3 +109,19 @@ O profissional configura apenas a própria disponibilidade em **Configurações*
 No **Início**, os três períodos atualizam os atendimentos, valores, repasses e ocupação; a capacidade considera jornadas e ausências cadastradas. O seletor de referência permite escolher dia, mês ou ano. **Hoje** retorna à data demonstrativa 11/11/2026.
 
 Na **Agenda**, a Lista mostra todos os registros do período escolhido. Na Pilha, **Ano** exibe os 12 meses; selecionar um mês abre seu calendário; selecionar um dia abre a grade de horários proporcional. Os filtros de profissional continuam aplicados em todos os períodos. Meses sem dados ficam vazios; não são criados totais fictícios para preencher o calendário.
+
+### Catálogo, profissionais e acesso demonstrativo
+
+**Procedimentos** guarda somente nome, duração e valor, com botão Editar. Cadastrar um procedimento não o habilita automaticamente para nenhum profissional. Editar o catálogo não altera os serviços, preços, duração e repasses já fixados nos atendimentos existentes; registros antigos sem cópia dos serviços são preservados antes da primeira edição.
+
+Em **Profissionais**, use **Novo profissional**, **Habilitar** ou **Desabilitar**. Clique no nome para abrir:
+
+- **Acesso:** somente o administrador define/altera uma senha fictícia de demonstração, com confirmação. Ela passa a ser solicitada ao explorar aquele perfil.
+- **Jornada:** dias e horários de trabalho, pausas e ausências. O profissional continua podendo ajustar sua própria jornada em Configurações.
+- **Procedimentos e repasses:** somente o administrador marca os serviços habilitados e o percentual de cada um para aquele profissional. Alterações afetam novos atendimentos.
+
+Desabilitar remove o profissional dos novos agendamentos e da seleção de acesso, preservando vínculos e histórico. Profissionais novos começam ativos, com jornada demonstrativa padrão e sem serviços atribuídos. Configure os serviços antes de agendar.
+
+Os vínculos e percentuais antigos são migrados para `navalha-v01-professional-records`; o catálogo persistido fica somente com ID, nome, duração e preço. A vinculação usada no agendamento é derivada dos profissionais ativos.
+
+**Senhas são apenas demonstração local:** a aplicação guarda no navegador uma derivação PBKDF2/SHA-256 com sal aleatório, nunca a senha em texto puro. Não há servidor, sessão segura, recuperação de senha, limite de tentativas ou proteção real dos dados. Não use senhas reais. Um backend com autorização no servidor será necessário para produção. Senhas e derivações geradas durante o uso não são incluídas no repositório.

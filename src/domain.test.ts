@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
+  initialProfessionalRecords,
+  assignedProcedures,
+  cleanProcedure,
+  createProfessional,
+  updateProfessional,
+  effectiveSchedules,
+  defaultSchedule,
   createAppointment,
   getAvailableTimes,
   initialWorkSchedules,
@@ -790,5 +797,170 @@ describe("períodos hoje, mês e ano", () => {
         "2026-11-15",
       ),
     ).toBe(0);
+  });
+});
+
+describe("cadastro de procedimentos e profissionais separados", () => {
+  it("migra habilitação e repasses antigos para os profissionais", () => {
+    const records = initialProfessionalRecords(initialProcedures);
+    expect(records).toHaveLength(3);
+    expect(
+      records[0].services.find((s) => s.procedureId === 1)?.commissionRate,
+    ).toBe(40);
+    expect(Object.keys(cleanProcedure(initialProcedures[0])).sort()).toEqual([
+      "duration",
+      "id",
+      "name",
+      "price",
+    ]);
+    const catalog = initialProcedures.map(cleanProcedure),
+      assigned = assignedProcedures(catalog, records);
+    expect(assigned[0].professionals).toContain(professionals[0]);
+    expect(procedureRate(assigned[0], professionals[0])).toBe(40);
+  });
+  it("novo procedimento não habilita profissionais automaticamente", () => {
+    const catalog = [
+      ...initialProcedures.map(cleanProcedure),
+      { id: 99, name: "Novo serviço", duration: 30, price: 80 },
+    ];
+    expect(
+      assignedProcedures(
+        catalog,
+        initialProfessionalRecords(initialProcedures),
+      ).find((p) => p.id === 99)?.professionals,
+    ).toEqual([]);
+  });
+  it("cadastra profissional ativo sem serviços e impede nomes duplicados", () => {
+    const records = initialProfessionalRecords(initialProcedures),
+      record = createProfessional(records, "  Bianca Souza  ", 99, "admin");
+    expect(record.name).toBe("Bianca Souza");
+    expect(record.active).toBe(true);
+    expect(record.services).toEqual([]);
+    expect(() =>
+      createProfessional(records, " rafael moura ", 99, "admin"),
+    ).toThrow("existe");
+  });
+  it("apenas o administrador cadastra e altera repasses ou acesso", () => {
+    const records = initialProfessionalRecords(initialProcedures);
+    expect(() =>
+      createProfessional(records, "Teste", 99, "professional"),
+    ).toThrow("administrador");
+    expect(() =>
+      updateProfessional(
+        records,
+        { ...records[0], active: false },
+        "professional",
+      ),
+    ).toThrow("administrador");
+    expect(() =>
+      updateProfessional(
+        records,
+        {
+          ...records[0],
+          services: [{ procedureId: 1, enabled: true, commissionRate: 101 }],
+        },
+        "admin",
+      ),
+    ).toThrow("100%");
+  });
+  it("desabilitar preserva histórico e repasses, mas remove horários e habilitação para novos serviços", () => {
+    const records = initialProfessionalRecords(initialProcedures),
+      updated = updateProfessional(
+        records,
+        { ...records[0], active: false },
+        "admin",
+      );
+    expect(updated[0].services).toEqual(records[0].services);
+    expect(
+      assignedProcedures(initialProcedures.map(cleanProcedure), updated)[0]
+        .professionals,
+    ).not.toContain(professionals[0]);
+    expect(
+      getAvailableTimes(
+        initialAppointments,
+        initialProcedures,
+        effectiveSchedules(initialWorkSchedules, updated),
+        professionals[0],
+        "2026-11-11",
+        30,
+      ),
+    ).toEqual([]);
+    expect(initialAppointments[0].professional).toBe(professionals[0]);
+  });
+  it("configuração individual de serviços e repasses aplica-se aos novos atendimentos", () => {
+    const records = initialProfessionalRecords(initialProcedures),
+      updated = updateProfessional(
+        records,
+        {
+          ...records[0],
+          services: [{ procedureId: 3, enabled: true, commissionRate: 70 }],
+        },
+        "admin",
+      );
+    const projected = assignedProcedures(
+      initialProcedures.map(cleanProcedure),
+      updated,
+    );
+    expect(projected[0].professionals).not.toContain(professionals[0]);
+    expect(projected[2].professionals).toContain(professionals[0]);
+    const a = createAppointment(
+      {
+        id: 99,
+        client: "Teste",
+        professional: professionals[0],
+        date: "2026-11-12",
+        time: "09:00",
+      },
+      [3],
+      projected,
+      [],
+      initialWorkSchedules,
+    );
+    expect(calculateCommission(a)).toBe(112);
+    expect(initialAppointments[0].commissionRate).toBe(40);
+  });
+  it("permite agenda e visibilidade para um novo profissional sem expor os demais", () => {
+    const original = initialProfessionalRecords(initialProcedures),
+      created = createProfessional(original, "Bianca Souza", 99, "admin");
+    const records = [
+        ...original,
+        {
+          ...created,
+          services: [{ procedureId: 1, enabled: true, commissionRate: 30 }],
+        },
+      ],
+      schedule = defaultSchedule(created.name);
+    const a = createAppointment(
+      {
+        id: 99,
+        client: "Teste",
+        professional: created.name,
+        date: "2026-11-12",
+        time: "09:00",
+      },
+      [1],
+      assignedProcedures(initialProcedures.map(cleanProcedure), records),
+      [],
+      [...initialWorkSchedules, schedule],
+    );
+    expect(
+      visibleAppointments(
+        [...initialAppointments, a],
+        "professional",
+        created.name,
+      ),
+    ).toEqual([a]);
+    expect(
+      rescheduleAppointment(
+        [a],
+        initialProcedures,
+        a.id,
+        a.date,
+        "10:00",
+        "professional",
+        [schedule],
+        created.name,
+      )[0].time,
+    ).toBe("10:00");
   });
 });
