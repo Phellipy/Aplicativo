@@ -205,7 +205,7 @@ Na Agenda (lista e pilha), o ícone do WhatsApp abre a conversa com a mensagem p
 
 ### Aparência e logo
 
-Em **Configurações → Estabelecimento**, escolha modo Claro/Escuro e a cor principal dos botões: azul, rosa, roxo, preto, branco, cinza, marrom ou laranja. As alterações são imediatas e ficam salvas no navegador; status e WhatsApp preservam suas cores semânticas. Os textos dos botões têm contraste mínimo de 4,5:1. A impressão das métricas mantém fundo claro.
+Em **Configurações → Estabelecimento**, escolha modo Claro/Escuro e a cor principal dos botões: azul, rosa, roxo, preto, branco, cinza, marrom, laranja, vermelho, verde, amarelo ou turquesa escuro. As alterações são imediatas e ficam salvas no navegador; status e WhatsApp preservam suas cores semânticas. Os textos dos botões têm contraste mínimo de 4,5:1. A impressão das métricas mantém fundo claro.
 
 A logo opcional aparece na tela de acesso. Aceita PNG/JPEG/WebP de até 2 MB, redimensionados para até 512 px antes de armazenar localmente. É possível substituir ou remover; sem logo, aparecem as iniciais. Não existe upload para servidor ou compartilhamento entre aparelhos.
 

@@ -63,6 +63,38 @@ export const accentColors = [
     light: "#b94708",
     dark: "#ffb789",
   },
+  {
+    id: "red",
+    name: "Vermelho",
+    fill: "#b91c1c",
+    text: "#ffffff",
+    light: "#b91c1c",
+    dark: "#fca5a5",
+  },
+  {
+    id: "green",
+    name: "Verde",
+    fill: "#15803d",
+    text: "#ffffff",
+    light: "#15803d",
+    dark: "#86efac",
+  },
+  {
+    id: "yellow",
+    name: "Amarelo",
+    fill: "#facc15",
+    text: "#242629",
+    light: "#806000",
+    dark: "#fde047",
+  },
+  {
+    id: "dark-turquoise",
+    name: "Turquesa escuro",
+    fill: "#0f6666",
+    text: "#ffffff",
+    light: "#0f6666",
+    dark: "#7cdddd",
+  },
 ] as const;
 export type Appearance = {
   mode: "light" | "dark";
