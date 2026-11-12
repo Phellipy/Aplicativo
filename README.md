@@ -212,3 +212,5 @@ A logo opcional aparece na tela de acesso. Aceita PNG/JPEG/WebP de até 2 MB, re
 ### Pagamento posterior
 
 Atendimentos concluídos como Não pago continuam com a opção **Registrar / alterar pagamento** na Agenda. No Início, clique no status de pagamento da tabela; no Financeiro, clique em **Não pago · Alterar** (ou na forma já registrada). Escolha dinheiro, Pix, crédito, débito ou Não pago. O mesmo atendimento é atualizado, sem duplicação. O recebimento integral continua associado à data do atendimento nesta versão, sem conciliação por data efetiva de pagamento ou pagamentos parciais.
+
+Em cada aba de lembrete, **Dicas de campos** abre uma explicação das variáveis entre chaves, com origem dos dados e exemplos. Agendamento oferece `{nome}`, `{estabelecimento}`, `{data}`, `{horario}`, `{profissional}` e `{procedimentos}`. Retorno oferece `{nome}` e `{estabelecimento}`, pois não está associado a um horário agendado. Os campos devem ser digitados exatamente como listados; a pré-visualização mostra o resultado.

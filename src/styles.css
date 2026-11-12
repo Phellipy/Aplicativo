@@ -4396,3 +4396,51 @@ textarea:focus-visible {
 :root[data-theme="dark"] .professional-summary {
   border-color: var(--border);
 }
+
+.reminder-field-tips {
+  margin: 12px 0 16px;
+}
+.field-tips-panel {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  background: var(--surface-alt);
+}
+.field-tips-panel > p {
+  margin: 10px 0;
+  font-size: 12px;
+}
+.field-tips-panel dl {
+  margin: 12px 0;
+}
+.field-tips-panel dl > div {
+  display: grid;
+  grid-template-columns: 145px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.field-tips-panel dt {
+  font-size: 12px;
+}
+.field-tips-panel code {
+  color: var(--blue);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.field-tips-panel dd {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.field-tips-panel dd small {
+  display: block;
+  font-size: 11px;
+}
+@media (max-width: 500px) {
+  .field-tips-panel dl > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}

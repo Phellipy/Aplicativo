@@ -1,3 +1,4 @@
+import ReminderFieldTips from "./ReminderFieldTips";
 import LogoSettings from "./LogoSettings";
 import AppearanceSettings from "./AppearanceSettings";
 import type { Appearance } from "./appearance";
@@ -136,11 +137,7 @@ export default function SettingsPage({
                   }
                 />
               </label>
-              <p>
-                {isAppointment
-                  ? "Use {nome}, {estabelecimento}, {data}, {horario}, {profissional} e {procedimentos}."
-                  : "Use {nome} e {estabelecimento}."}
-              </p>
+              <ReminderFieldTips key={tab} appointment={isAppointment} />
               <button
                 className="primary"
                 disabled={!draft.trim()}
