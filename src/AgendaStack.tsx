@@ -363,20 +363,24 @@ export default function AgendaStack({
                         title={`${a.client} · ${a.procedure} · ${a.status}`}
                       >
                         <span className="timeline-event-heading">
-                          <span className="timeline-event-status">
-                            {a.status}
-                          </span>
+                          <strong className="timeline-event-client">
+                            {a.client}
+                          </strong>
                           <span className="timeline-event-time">
                             {a.time}–{minuteTime(item.end)} ·{" "}
                             {item.end - item.start} min
                           </span>
                         </span>
-                        <strong>{a.client}</strong>
                         <span className="timeline-event-service">
                           {a.procedure}
                         </span>
-                        <span className="timeline-event-value">
-                          {money(a.value)}
+                        <span className="timeline-event-footer">
+                          <span className="timeline-event-status">
+                            {a.status}
+                          </span>
+                          <span className="timeline-event-value">
+                            {money(a.value)}
+                          </span>
                         </span>
                         {canReschedule(a) &&
                           !fitsWorkSchedule(

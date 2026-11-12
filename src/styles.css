@@ -3718,3 +3718,72 @@ fieldset .check-row input {
 .timeline-short .timeline-event-service {
   font-size: 9px;
 }
+
+/* Client first; quiet status and a stable price anchor at the bottom. */
+.timeline-event-client {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  line-height: 1.25;
+}
+.timeline-event-heading .timeline-event-time {
+  flex-shrink: 0;
+}
+.timeline-event-footer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  margin-top: auto;
+  min-width: 0;
+}
+.timeline-event-footer .timeline-event-status {
+  font-size: 9px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+.timeline-event-footer .timeline-event-value {
+  position: static;
+  width: auto;
+  margin: 0;
+  flex-shrink: 0;
+}
+.timeline-compact .timeline-event-content {
+  grid-template-rows: 14px 15px 12px;
+  gap: 2px 4px;
+}
+.timeline-compact .timeline-event-client {
+  font-size: 12px;
+}
+.timeline-compact .timeline-event-service {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+.timeline-compact .timeline-event-footer {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  margin: 0;
+}
+.timeline-short .timeline-event-content {
+  grid-template-rows: 9px 9px 8px;
+  gap: 0 3px;
+  padding: 1px 3px;
+}
+.timeline-short .timeline-event-client {
+  font-size: 10px;
+  line-height: 9px;
+}
+.timeline-short .timeline-event-time {
+  font-size: 7px;
+}
+.timeline-short .timeline-event-footer .timeline-event-status {
+  font-size: 7px;
+  line-height: 8px;
+}
+.timeline-short .timeline-event-footer .timeline-event-value {
+  font-size: 8px;
+  line-height: 8px;
+}
