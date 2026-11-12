@@ -94,3 +94,7 @@ Configurações em abas e lembrete de agendamento: 151 testes aprovados. Verific
 Aparência: modo escuro com rosa conferido no navegador em Configurações e Início. Testes verificam contraste de todas as cores dos botões e normalização de preferências. Logo: validação de formato/tamanho; pagamento posterior: teste garante atualização do mesmo atendimento, sem duplicar receitas. Espaçamento entre valor e forma de pagamento no Início aumentado para 14 px.
 
 Verificação final no navegador: o controle de pagamento do Início abriu o modal; atendimento concluído foi marcado Não pago e retornou a Pix no mesmo registro demonstrativo. Espaçamento calculado de 14 px confirmado. Upload de PNG descartável foi redimensionado/armazenado e apareceu na tela de acesso ao abrir uma nova aba; logo de teste removida pela interface. Build aprovado e 165 testes passando.
+
+Convites de retorno configuráveis: testes cobrem limite de dias, elegibilidade, consentimento/telefone, intervalo de sete dias, alerta a partir da terceira abertura, reset por nova conclusão sem apagar histórico, alteração de pagamento sem reset, preservação ao editar cliente e recarga do armazenamento. 179 testes aprovados.
+
+Conferência visual: prazo alterado temporariamente para 20 dias, refletido no filtro e nos sinalizadores de Clientes. “Pode convidar agora” exibiu apenas os dois clientes demonstrativos elegíveis. Prazo restaurado para 30 dias pela interface. Nenhuma conversa externa foi aberta ou mensagem enviada.

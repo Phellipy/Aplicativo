@@ -1,4 +1,9 @@
 import {
+  normalizeReturnDays,
+  completeClientVisit,
+  inReminderCycle,
+} from "./domain";
+import {
   applyAppearance,
   normalizeAppearance,
   type Appearance,
@@ -206,6 +211,11 @@ export default function App() {
     value.length <= 700000
       ? value
       : "",
+  );
+  const [returnDays, setReturnDays] = useStored<number>(
+    "navalha-v01-return-days",
+    30,
+    normalizeReturnDays,
   );
   const [role, setRole] = useState<Role | null>(null),
     [page, setPage] = useState<Page>("Dashboard"),
@@ -424,7 +434,7 @@ export default function App() {
     .reduce((s, a) => s + calculateCommission(a), 0);
   const commission = calculateCommission;
   const payout = completed.reduce((s, a) => s + commission(a), 0),
-    eligible = eligibleClients(clients, campaigns);
+    eligible = eligibleClients(clients, campaigns, TODAY, returnDays);
   const navigate = (p: Page) => {
     setPage(p);
     setMobile(false);
@@ -601,9 +611,9 @@ export default function App() {
       items.map((x) => (x.id === a.id ? { ...x, status } : x)),
     );
     if (status === "Concluído")
-      setClients(
-        clients.map((c) =>
-          c.name === a.client ? { ...c, lastVisit: a.date } : c,
+      setClients((items) =>
+        items.map((client) =>
+          completeClientVisit(client, a, new Date().toISOString()),
         ),
       );
     setToast("Atendimento atualizado.");
@@ -618,7 +628,11 @@ export default function App() {
     }
   }
   const whatsappRepeat = campaignClient
-    ? !canOpenWhatsApp(campaigns, campaignClient.id, whatsappDraft)
+    ? !canOpenWhatsApp(
+        campaigns.filter((entry) => inReminderCycle(entry, campaignClient)),
+        campaignClient.id,
+        whatsappDraft,
+      )
     : false;
   const whatsappAllowed = Boolean(admin && whatsappURL && !whatsappRepeat);
   function openWhatsAppPreview(client: Client) {
@@ -1217,8 +1231,8 @@ export default function App() {
                       </div>
                       <h3>É hora de se reconectar</h3>
                       <p>
-                        {eligible.length} clientes estão há 30 dias ou mais sem
-                        atendimento.
+                        {eligible.length} clientes estão há {returnDays} dias ou
+                        mais sem atendimento.
                       </p>
                       <button
                         className="secondary wide"
@@ -1492,6 +1506,7 @@ export default function App() {
                 clients={clients}
                 appointments={appointments}
                 campaigns={campaigns}
+                returnDays={returnDays}
                 onEdit={(client) => {
                   setEditingClient(client);
                   setModal("client");
@@ -1652,6 +1667,11 @@ export default function App() {
           {page === "Configurações" && admin && (
             <SettingsPage
               name={establishmentName}
+              returnDays={returnDays}
+              onReturnDays={(value) => {
+                setReturnDays(normalizeReturnDays(value));
+                setToast("Prazo de retorno salvo neste navegador.");
+              }}
               message={message}
               appointmentTemplate={appointmentTemplate}
               appearance={appearance}
@@ -1797,14 +1817,14 @@ export default function App() {
                           : item,
                       ),
                     );
+                    const completedAt = new Date().toISOString();
                     setClients((items) =>
                       items.map((client) =>
-                        (client.id === completionAppointment.clientId ||
-                          (!completionAppointment.clientId &&
-                            client.name === completionAppointment.client)) &&
-                        client.lastVisit < completionAppointment.date
-                          ? { ...client, lastVisit: completionAppointment.date }
-                          : client,
+                        completeClientVisit(
+                          client,
+                          completionAppointment,
+                          completedAt,
+                        ),
                       ),
                     );
                     close();
@@ -1896,6 +1916,7 @@ export default function App() {
                     created: openedAt,
                     openedAt,
                     message: whatsappDraft.trim(),
+                    cycleResetAt: campaignClient.reminderResetAt ?? "",
                   },
                 ]);
                 setToast(

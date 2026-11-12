@@ -7,6 +7,8 @@ import { appointmentMessage } from "./appointmentReminder";
 import { initialAppointments } from "./domain";
 export default function SettingsPage({
   name,
+  returnDays,
+  onReturnDays,
   message,
   appointmentTemplate,
   logo,
@@ -22,6 +24,8 @@ export default function SettingsPage({
   appearance: Appearance;
   onAppearance: (next: Appearance) => void;
   name: string;
+  returnDays: number;
+  onReturnDays: (days: number) => void;
   message: string;
   appointmentTemplate: string;
   onName: (value: string) => void;
@@ -32,6 +36,11 @@ export default function SettingsPage({
     [draftName, setDraftName] = useState(name),
     [draftReturn, setDraftReturn] = useState(message),
     [draftAppointment, setDraftAppointment] = useState(appointmentTemplate);
+  const [draftDays, setDraftDays] = useState(String(returnDays));
+  const validDays =
+    Number.isInteger(Number(draftDays)) &&
+    Number(draftDays) >= 1 &&
+    Number(draftDays) <= 3650;
   const tabs = [
     { key: "establishment", label: "Estabelecimento" },
     { key: "appointment", label: "Lembrete de Agendamento" },
@@ -123,8 +132,36 @@ export default function SettingsPage({
               <p>
                 {isAppointment
                   ? "No dia do atendimento, use o ícone do WhatsApp na agenda para abrir a mensagem pronta. Você revisa e envia no WhatsApp. Também pode abrir antecipadamente se precisar."
-                  : "Convite para clientes há 30 dias ou mais sem atendimento. Revise cada mensagem e abra o WhatsApp manualmente na aba Clientes."}
+                  : `Convite para clientes há ${returnDays} dias ou mais sem atendimento. Revise cada mensagem e abra o WhatsApp manualmente na aba Clientes.`}
               </p>
+              {!isAppointment && (
+                <div className="return-days-settings">
+                  <label>
+                    Dias sem atendimento
+                    <input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      step={1}
+                      value={draftDays}
+                      onChange={(event) => setDraftDays(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary"
+                    disabled={!validDays || Number(draftDays) === returnDays}
+                    onClick={() => onReturnDays(Number(draftDays))}
+                  >
+                    Salvar prazo
+                  </button>
+                  <small>
+                    A partir deste número de dias, o cliente recebe um
+                    sinalizador na aba Clientes. O novo prazo vale imediatamente
+                    para os filtros.
+                  </small>
+                </div>
+              )}
               <label>
                 Mensagem padrão
                 <textarea

@@ -61,8 +61,20 @@ describe("reativação", () => {
     ).toEqual([]));
   it("inclui o dia 30 e exclui o dia 29", () => {
     const clients = [
-      { id: 1, name: "A", phone: "", consent: true, lastVisit: "2026-10-12" },
-      { id: 2, name: "B", phone: "", consent: true, lastVisit: "2026-10-13" },
+      {
+        id: 1,
+        name: "A",
+        phone: "11900000000",
+        consent: true,
+        lastVisit: "2026-10-12",
+      },
+      {
+        id: 2,
+        name: "B",
+        phone: "11900000000",
+        consent: true,
+        lastVisit: "2026-10-13",
+      },
     ];
     expect(eligibleClients(clients, []).map((c) => c.id)).toEqual([1]);
   });

@@ -9,6 +9,9 @@ import {
 } from "lucide-react";
 import {
   TODAY,
+  daysSinceVisit,
+  returnReminderStats,
+  eligibleClients,
   canReschedule,
   type Client,
   type Appointment,
@@ -18,6 +21,7 @@ type Props = {
   clients: Client[];
   appointments: Appointment[];
   campaigns: Campaign[];
+  returnDays: number;
   onEdit: (client: Client) => void;
   onDelete: (id: number) => void;
   onRestore: (id: number) => void;
@@ -27,6 +31,7 @@ export default function ClientsPanel({
   clients,
   appointments,
   campaigns,
+  returnDays,
   onEdit,
   onDelete,
   onRestore,
@@ -36,6 +41,12 @@ export default function ClientsPanel({
     [excluded, setExcluded] = useState(false),
     [deleting, setDeleting] = useState<Client | null>(null),
     [error, setError] = useState("");
+  const [returnFilter, setReturnFilter] = useState("all");
+  const eligibleIds = new Set(
+    eligibleClients(clients, campaigns, TODAY, returnDays).map(
+      (client) => client.id,
+    ),
+  );
   const dialog = useRef<HTMLDialogElement>(null),
     previousFocus = useRef<HTMLElement | null>(null);
   useEffect(() => {
@@ -51,6 +62,11 @@ export default function ClientsPanel({
   const visible = clients.filter(
     (client) =>
       Boolean(client.deletedAt) === excluded &&
+      (returnFilter === "all" ||
+        (returnFilter === "overdue" && daysSinceVisit(client) >= returnDays) ||
+        (returnFilter === "eligible" && eligibleIds.has(client.id)) ||
+        (returnFilter === "warning" &&
+          returnReminderStats(client, campaigns).warning)) &&
       (client.name + client.phone)
         .toLocaleLowerCase("pt-BR")
         .includes(query.toLocaleLowerCase("pt-BR")),
@@ -79,6 +95,19 @@ export default function ClientsPanel({
             Excluídos ({clients.filter((client) => client.deletedAt).length})
           </button>
         </div>
+        <label className="return-client-filter">
+          Convites de retorno
+          <select
+            aria-label="Convites de retorno"
+            value={returnFilter}
+            onChange={(event) => setReturnFilter(event.target.value)}
+          >
+            <option value="all">Todos os clientes</option>
+            <option value="overdue">Sem retorno há {returnDays}+ dias</option>
+            <option value="eligible">Pode convidar agora</option>
+            <option value="warning">Mais de 2 lembretes abertos</option>
+          </select>
+        </label>
         <div className="search">
           <Search size={18} />
           <input
@@ -89,76 +118,102 @@ export default function ClientsPanel({
           />
         </div>
       </div>
+      <p className="return-filter-note">
+        Prazo configurado: {returnDays} dias sem atendimento · referência
+        demonstrativa {TODAY.split("-").reverse().join("/")}. “Pode convidar
+        agora” exige autorização e ausência de lembrete aberto nos últimos 7
+        dias. O contador registra aberturas, não confirma envio.
+      </p>
       <section className="panel client-list">
-        {visible.map((client) => (
-          <div className="client-row" key={client.id}>
-            <span className="avatar">
-              {client.name
-                .split(" ")
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")}
-            </span>
-            <div className="client-info">
-              <strong>{client.name}</strong>
-              <small>
-                {client.phone} · Última visita:{" "}
-                {client.lastVisit.split("-").reverse().join("/")}
-              </small>
-              {!client.deletedAt && (
+        {visible.map((client) => {
+          const stats = returnReminderStats(client, campaigns),
+            overdue = daysSinceVisit(client) >= returnDays;
+          return (
+            <div className="client-row" key={client.id}>
+              <span className="avatar">
+                {client.name
+                  .split(" ")
+                  .slice(0, 2)
+                  .map((part) => part[0])
+                  .join("")}
+              </span>
+              <div className="client-info">
+                <strong>{client.name}</strong>
                 <small>
-                  {!client.consent
-                    ? "Sem autorização para mensagens"
-                    : Math.floor(
-                          (Date.parse(TODAY) - Date.parse(client.lastVisit)) /
-                            86400000,
-                        ) >= 30
-                      ? "30+ dias sem atendimento"
-                      : "Atendimento recente"}
+                  {client.phone} · Última visita:{" "}
+                  {client.lastVisit.split("-").reverse().join("/")}
                 </small>
-              )}
-            </div>
-            <div className="client-actions">
-              {excluded ? (
-                <button
-                  className="secondary"
-                  onClick={() => onRestore(client.id)}
-                >
-                  <RotateCcw size={15} />
-                  Restaurar
-                </button>
-              ) : (
-                <>
+                {!client.deletedAt && (
+                  <div className="return-client-indicators">
+                    {overdue && (
+                      <span className="return-overdue">
+                        Sem retorno · {daysSinceVisit(client)} dias
+                      </span>
+                    )}
+                    {!client.consent && (
+                      <small>Sem autorização para mensagens</small>
+                    )}
+                    <span
+                      className={`return-count ${stats.warning ? "is-warning" : ""}`}
+                    >
+                      {stats.count} lembrete(s) aberto(s) neste ciclo
+                      {stats.warning
+                        ? " · Atenção à frequência de contato"
+                        : ""}
+                    </span>
+                    <small>
+                      Última abertura:{" "}
+                      {stats.lastOpenedAt
+                        ? new Date(stats.lastOpenedAt).toLocaleString("pt-BR", {
+                            timeZone: "America/Sao_Paulo",
+                          })
+                        : "Nenhuma neste ciclo"}
+                    </small>
+                  </div>
+                )}
+              </div>
+              <div className="client-actions">
+                {excluded ? (
                   <button
                     className="secondary"
-                    aria-label={`Editar ${client.name}`}
-                    onClick={() => onEdit(client)}
+                    onClick={() => onRestore(client.id)}
                   >
-                    <Pencil size={15} />
-                    Editar
+                    <RotateCcw size={15} />
+                    Restaurar
                   </button>
-                  <button
-                    className="secondary whatsapp-button"
-                    aria-label={`WhatsApp de ${client.name}`}
-                    disabled={!client.consent}
-                    onClick={() => onWhatsApp(client)}
-                  >
-                    <MessageSquare size={15} />
-                    WhatsApp
-                  </button>
-                  <button
-                    className="secondary danger-button"
-                    aria-label={`Excluir ${client.name}`}
-                    onClick={() => setDeleting(client)}
-                  >
-                    <Trash2 size={15} />
-                    Excluir
-                  </button>
-                </>
-              )}
+                ) : (
+                  <>
+                    <button
+                      className="secondary"
+                      aria-label={`Editar ${client.name}`}
+                      onClick={() => onEdit(client)}
+                    >
+                      <Pencil size={15} />
+                      Editar
+                    </button>
+                    <button
+                      className="secondary whatsapp-button"
+                      aria-label={`WhatsApp de ${client.name}`}
+                      disabled={!client.consent}
+                      onClick={() => onWhatsApp(client)}
+                    >
+                      <MessageSquare size={15} />
+                      WhatsApp
+                    </button>
+                    <button
+                      className="secondary danger-button"
+                      aria-label={`Excluir ${client.name}`}
+                      onClick={() => setDeleting(client)}
+                    >
+                      <Trash2 size={15} />
+                      Excluir
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {!visible.length && (
           <div className="empty">
             {excluded

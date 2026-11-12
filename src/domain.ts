@@ -55,6 +55,7 @@ export type Client = {
   lastVisit: string;
   consent: boolean;
   document?: string;
+  reminderResetAt?: string;
   deletedAt?: string;
 };
 export type Procedure = {
@@ -81,6 +82,7 @@ export type Campaign = {
   created: string;
   message?: string;
   openedAt?: string;
+  cycleResetAt?: string;
 };
 export const TODAY = "2026-11-11";
 export const professionals = ["Rafael Moura", "Diego Alves", "Lucas Pires"];
@@ -220,25 +222,90 @@ export const visibleAppointments = (
   role === "admin"
     ? items
     : items.filter((a) => a.professional === professional);
+export function normalizeReturnDays(value: unknown): number {
+  return typeof value === "number" &&
+    Number.isInteger(value) &&
+    value >= 1 &&
+    value <= 3650
+    ? value
+    : 30;
+}
+export function daysSinceVisit(client: Client, date = TODAY) {
+  return Math.max(
+    0,
+    Math.floor((Date.parse(date) - Date.parse(client.lastVisit)) / 86400000),
+  );
+}
+export function inReminderCycle(campaign: Campaign, client: Client) {
+  if (campaign.clientId !== client.id) return false;
+  if (campaign.cycleResetAt !== undefined)
+    return campaign.cycleResetAt === (client.reminderResetAt ?? "");
+  return (
+    !client.reminderResetAt ||
+    Boolean(campaign.openedAt && campaign.openedAt > client.reminderResetAt)
+  );
+}
+export function returnReminderStats(client: Client, campaigns: Campaign[]) {
+  const openings = campaigns.filter(
+    (entry) => entry.status === "opened" && inReminderCycle(entry, client),
+  );
+  const lastOpenedAt = openings
+    .map((entry) => entry.openedAt ?? entry.created)
+    .filter((value) => Number.isFinite(Date.parse(value)))
+    .sort()
+    .at(-1);
+  return { count: openings.length, lastOpenedAt, warning: openings.length > 2 };
+}
+export function completeClientVisit(
+  client: Client,
+  appointment: Appointment,
+  now: string,
+): Client {
+  if (
+    appointment.status === "Concluído" ||
+    appointment.date < client.lastVisit ||
+    !(
+      appointment.clientId === client.id ||
+      (!appointment.clientId && appointment.client === client.name)
+    )
+  )
+    return client;
+  return {
+    ...client,
+    lastVisit:
+      client.lastVisit > appointment.date ? client.lastVisit : appointment.date,
+    reminderResetAt: now,
+  };
+}
 export const eligibleClients = (
   clients: Client[],
   campaigns: Campaign[],
   now = TODAY,
+  days = 30,
+  clock = Date.now(),
 ) =>
-  clients.filter(
-    (c) =>
-      !c.deletedAt &&
-      c.consent &&
-      Math.floor((Date.parse(now) - Date.parse(c.lastVisit)) / 86400000) >=
-        30 &&
-      !campaigns.some(
-        (m) =>
-          m.clientId === c.id &&
-          (m.status !== "opened" ||
-            !m.openedAt ||
-            Date.now() - Date.parse(m.openedAt) < 7 * 86400000),
-      ),
-  );
+  clients
+    .filter(
+      (client) =>
+        !client.deletedAt &&
+        client.consent &&
+        daysSinceVisit(client, now) >= normalizeReturnDays(days) &&
+        !campaigns.some(
+          (entry) =>
+            inReminderCycle(entry, client) &&
+            (entry.status !== "opened" ||
+              !entry.openedAt ||
+              clock - Date.parse(entry.openedAt) < 7 * 86400000),
+        ),
+    )
+    .filter((client) => {
+      try {
+        whatsAppLink(client, "Convite de retorno");
+        return true;
+      } catch {
+        return false;
+      }
+    });
 export const money = (n: number) =>
   n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -906,6 +973,7 @@ export function saveClient(
     name,
     phone,
     document,
+    reminderResetAt: previous?.reminderResetAt,
     deletedAt: previous?.deletedAt,
   };
   return {

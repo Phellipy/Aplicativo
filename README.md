@@ -216,3 +216,11 @@ Atendimentos concluídos como Não pago continuam com a opção **Registrar / al
 Em cada aba de lembrete, **Dicas de campos** abre uma explicação das variáveis entre chaves, com origem dos dados e exemplos. Agendamento oferece `{nome}`, `{estabelecimento}`, `{data}`, `{horario}`, `{profissional}` e `{procedimentos}`. Retorno oferece `{nome}` e `{estabelecimento}`, pois não está associado a um horário agendado. Os campos devem ser digitados exatamente como listados; a pré-visualização mostra o resultado.
 
 O guia Dicas de campos mostra todos os seis campos nas duas telas. No retorno, os campos ligados a um agendamento são identificados como disponíveis apenas no lembrete de agendamento.
+
+### Convites de retorno: prazo, filtros e ciclos
+
+Em **Configurações → Lembrete de Retorno**, defina **Dias sem atendimento** (inteiro de 1 a 3650) e clique em **Salvar prazo**. O padrão é 30 dias. O prazo é aplicado imediatamente ao sinalizador de Clientes, ao filtro e ao aviso do Início. A referência de dias continua sendo a data demonstrativa indicada no aplicativo.
+
+Clientes permite filtrar Todos, Sem retorno há X+ dias, Pode convidar agora e Mais de 2 lembretes abertos. “Pode convidar agora” exige prazo atingido, cadastro ativo, autorização, telefone válido e nenhum convite aberto nos últimos sete dias no ciclo atual. As aberturas válidas do link de retorno exibem contagem e data da última abertura (São Paulo). Abrir apenas a prévia não incrementa; não há confirmação de envio/leitura pelo WhatsApp. A partir da terceira abertura, o texto da contagem destaca o cuidado com a frequência. A proteção contra repetição da mesma mensagem por sete dias permanece ativa.
+
+Concluir um novo atendimento, pago ou pendente, atualiza a última visita e inicia um novo ciclo com contagem zero. Alterar o pagamento de um atendimento já concluído não reinicia o ciclo. O histórico anterior continua disponível; a contagem e a última abertura exibidas no cadastro se referem ao ciclo atual. Os registros ficam neste navegador.
