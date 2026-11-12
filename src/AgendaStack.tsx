@@ -332,7 +332,7 @@ export default function AgendaStack({
                         width: `calc(${100 / item.columns}% - 6px)`,
                       }}
                     >
-                      {canReschedule(a) && (
+                      {canReschedule(a) ? (
                         <button
                           className="stack-drag-handle"
                           aria-label={`Arrastar atendimento de ${a.client} às ${a.time}`}
@@ -345,6 +345,11 @@ export default function AgendaStack({
                         >
                           <GripVertical size={18} />
                         </button>
+                      ) : (
+                        <span
+                          className="stack-handle-space"
+                          aria-hidden="true"
+                        />
                       )}
                       <button
                         className="timeline-event-content"
@@ -357,16 +362,21 @@ export default function AgendaStack({
                         }}
                         title={`${a.client} · ${a.procedure} · ${a.status}`}
                       >
-                        <span className="timeline-event-time">
-                          {a.time}–{minuteTime(item.end)} ·{" "}
-                          {item.end - item.start} min
+                        <span className="timeline-event-heading">
+                          <span className="timeline-event-status">
+                            {a.status}
+                          </span>
+                          <span className="timeline-event-time">
+                            {a.time}–{minuteTime(item.end)} ·{" "}
+                            {item.end - item.start} min
+                          </span>
                         </span>
                         <strong>{a.client}</strong>
                         <span className="timeline-event-service">
                           {a.procedure}
                         </span>
                         <span className="timeline-event-value">
-                          {money(a.value)} <small>{a.status}</small>
+                          {money(a.value)}
                         </span>
                         {canReschedule(a) &&
                           !fitsWorkSchedule(
