@@ -25,6 +25,8 @@ import {
   CircleAlert,
 } from "lucide-react";
 import {
+  agendaHours,
+  agendaStatusTone,
   paymentMethods,
   normalizeAppointments,
   completeAppointment,
@@ -131,6 +133,13 @@ export default function App() {
     ),
     [toast, setToast] = useState(""),
     [campaignClient, setCampaignClient] = useState<Client | null>(null);
+  const [agendaView, setAgendaView] = useStored<"list" | "stack">(
+    "navalha-v01-agenda-view",
+    "list",
+  );
+  const [expandedAppointment, setExpandedAppointment] = useState<number | null>(
+    null,
+  );
   const [completionAppointment, setCompletionAppointment] =
     useState<Appointment | null>(null);
   const [message, setMessage] = useStored(
@@ -845,7 +854,10 @@ export default function App() {
                   <input
                     type="date"
                     value={date}
-                    onChange={(e) => setDate(e.target.value)}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+                      setExpandedAppointment(null);
+                    }}
                   />
                 </label>
                 {admin && (
@@ -865,7 +877,24 @@ export default function App() {
                 <button className="secondary" onClick={() => setDate(TODAY)}>
                   Hoje (demo)
                 </button>
-                <span className="muted">Visão em lista · horários locais</span>
+                <div
+                  className="agenda-view-switch"
+                  role="group"
+                  aria-label="Visualização da agenda"
+                >
+                  <button
+                    aria-pressed={agendaView === "list"}
+                    onClick={() => setAgendaView("list")}
+                  >
+                    Lista
+                  </button>
+                  <button
+                    aria-pressed={agendaView === "stack"}
+                    onClick={() => setAgendaView("stack")}
+                  >
+                    Pilha
+                  </button>
+                </div>
               </section>
               <section className="panel">
                 <div className="panel-head">
@@ -876,11 +905,106 @@ export default function App() {
                     {scoped.filter((a) => a.date === date).length} atendimentos
                   </span>
                 </div>
-                {appointmentRows(
-                  scoped
-                    .filter((a) => a.date === date)
-                    .sort((a, b) => a.time.localeCompare(b.time)),
-                  true,
+                {agendaView === "stack" ? (
+                  <>
+                    <div
+                      className="agenda-legend"
+                      aria-label="Cores dos status"
+                    >
+                      {[
+                        "Agendado",
+                        "Confirmado",
+                        "Concluído",
+                        "Cancelado",
+                        "Não compareceu",
+                      ].map((status) => (
+                        <span
+                          className={`stack-tone-${agendaStatusTone(status)}`}
+                          key={status}
+                        >
+                          <i />
+                          {status}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="stack-help">
+                      Toque em um atendimento para ver as ações. Horários
+                      locais.
+                    </p>
+                    <div
+                      className="agenda-stack"
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") setExpandedAppointment(null);
+                      }}
+                    >
+                      {agendaHours(scoped.filter((a) => a.date === date)).map(
+                        (slot) => (
+                          <section
+                            className="stack-slot"
+                            aria-label={`Horário ${slot.label}`}
+                            key={slot.label}
+                          >
+                            <time className="stack-hour">{slot.label}</time>
+                            <div className="stack-slot-items">
+                              {slot.appointments.length ? (
+                                slot.appointments.map((a) => (
+                                  <div key={a.id}>
+                                    <button
+                                      className={`stack-appointment stack-tone-${agendaStatusTone(a.status)}`}
+                                      aria-expanded={
+                                        expandedAppointment === a.id
+                                      }
+                                      aria-controls={`stack-details-${a.id}`}
+                                      onClick={() =>
+                                        setExpandedAppointment(
+                                          expandedAppointment === a.id
+                                            ? null
+                                            : a.id,
+                                        )
+                                      }
+                                    >
+                                      <span className="stack-box-head">
+                                        <strong>
+                                          {a.time} · {a.client}
+                                        </strong>
+                                        <span className="stack-status">
+                                          {a.status}
+                                        </span>
+                                      </span>
+                                      <span className="stack-box-body">
+                                        <span>{a.procedure}</span>
+                                        <strong>{money(a.value)}</strong>
+                                      </span>
+                                      {admin && <small>{a.professional}</small>}
+                                    </button>
+                                    {expandedAppointment === a.id && (
+                                      <div
+                                        className="stack-detail"
+                                        id={`stack-details-${a.id}`}
+                                      >
+                                        {appointmentRows([a], true)}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <span className="stack-empty">
+                                  Sem agendamentos
+                                </span>
+                              )}
+                            </div>
+                          </section>
+                        ),
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  appointmentRows(
+                    scoped
+                      .filter((a) => a.date === date)
+                      .sort((a, b) => a.time.localeCompare(b.time)),
+                    true,
+                  )
                 )}
               </section>
             </>

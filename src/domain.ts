@@ -253,3 +253,30 @@ export const normalizeAppointments = (
         ? { ...appointment, status: "Agendado" }
         : appointment,
   );
+
+export function agendaHours(appointments: Appointment[]) {
+  const hours = appointments.map((a) => Number(a.time.slice(0, 2)));
+  const first = Math.min(8, ...hours);
+  const last = Math.max(20, ...hours);
+  return Array.from({ length: last - first + 1 }, (_, index) => {
+    const hour = first + index;
+    return {
+      label: `${String(hour).padStart(2, "0")}:00`,
+      appointments: appointments
+        .filter((a) => Number(a.time.slice(0, 2)) === hour)
+        .sort(
+          (a, b) =>
+            a.time.localeCompare(b.time) ||
+            a.professional.localeCompare(b.professional),
+        ),
+    };
+  });
+}
+export const agendaStatusTone = (status: string) =>
+  ({
+    Agendado: "scheduled",
+    Confirmado: "confirmed",
+    Concluído: "completed",
+    Cancelado: "cancelled",
+    "Não compareceu": "absent",
+  })[status] || "absent";

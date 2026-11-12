@@ -35,3 +35,9 @@ Build e 29 testes aprovados após a simplificação. Menu ⋯ e janela colorida 
 - Agendado: Confirmar presença, Atendimento Concluído e Cancelar. Confirmado: Não compareceu substitui Confirmar presença.
 - Os três botões ficam na mesma linha também no celular, com alvos mínimos de 44px.
 - Todos os registros iniciais da demonstração começam em Agendado; dados existentes do navegador são preservados. Build e 30 testes aprovados antes do ajuste final de espaçamento.
+
+## Visualização Pilha
+
+- Build e 33 testes aprovados. Novos testes cobrem horários vazios, registros simultâneos, ordenação dos minutos sem alteração dos dados e registros fora do intervalo padrão.
+- Alternância Lista/Pilha, caixas por status e expansão das ações verificadas no navegador.
+- Inspeção em 390px sem transbordamento da página; caixas mostram cliente, procedimento, valor e texto de status, com legenda das cores.

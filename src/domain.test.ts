@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  agendaHours,
   paymentMethods,
   normalizeAppointments,
   recordPayment,
@@ -229,3 +230,37 @@ it("migra horários pendentes para Agendado e preserva os demais estados", () =>
 
 it("todos os horários demonstrativos começam como Agendado", () =>
   expect(initialAppointments.every((a) => a.status === "Agendado")).toBe(true));
+
+describe("agenda em pilha", () => {
+  it("exibe horários mesmo em dias vazios", () => {
+    const slots = agendaHours([]);
+    expect(slots[0].label).toBe("08:00");
+    expect(slots.at(-1)?.label).toBe("20:00");
+    expect(slots.every((s) => s.appointments.length === 0)).toBe(true);
+  });
+  it("agrupa horários simultâneos e ordena os minutos sem alterar os dados", () => {
+    const base = initialAppointments[0];
+    const items = [
+      { ...base, id: 1, time: "09:30" },
+      { ...base, id: 2, time: "09:00" },
+      { ...base, id: 3, time: "09:00", professional: professionals[1] },
+      { ...base, id: 4, time: "10:00" },
+    ];
+    const slots = agendaHours(items);
+    expect(
+      slots.find((s) => s.label === "09:00")?.appointments.map((a) => a.time),
+    ).toEqual(["09:00", "09:00", "09:30"]);
+    expect(slots.find((s) => s.label === "10:00")?.appointments).toHaveLength(
+      1,
+    );
+    expect(items[0].time).toBe("09:30");
+  });
+  it("inclui registros fora da jornada padrão sem ocultá-los", () => {
+    const slots = agendaHours([
+      { ...initialAppointments[0], time: "07:30" },
+      { ...initialAppointments[0], time: "21:00" },
+    ]);
+    expect(slots[0].label).toBe("07:00");
+    expect(slots.at(-1)?.label).toBe("21:00");
+  });
+});

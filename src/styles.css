@@ -1956,3 +1956,206 @@ fieldset .check-row input {
     height: 14px;
   }
 }
+.agenda-view-switch {
+  display: flex;
+  padding: 3px;
+  border: 1px solid #dce1e7;
+  border-radius: 9px;
+  background: #e9edf2;
+  margin-left: auto;
+  gap: 3px;
+}
+.agenda-view-switch button {
+  min-height: 38px;
+  min-width: 78px;
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: transparent;
+  color: #636f7e;
+  font-size: 12px;
+  font-weight: 600;
+}
+.agenda-view-switch button[aria-pressed="true"] {
+  background: white;
+  box-shadow: 0 1px 4px #21365018;
+  color: #1266b5;
+}
+.agenda-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px 18px;
+  padding: 0 22px 12px;
+  font-size: 10px;
+}
+.agenda-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #687383;
+}
+.agenda-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 3px;
+  background: var(--stack-accent);
+}
+.stack-help {
+  font-size: 10px;
+  padding: 0 22px 15px;
+}
+.agenda-stack {
+  padding: 0 22px 22px;
+}
+.stack-slot {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 13px;
+  padding: 12px 0;
+  border-top: 1px solid #eef0f4;
+}
+.stack-hour {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6b7f;
+  padding-top: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.stack-slot-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border-left: 2px solid #e6ebf1;
+  padding-left: 15px;
+}
+.stack-empty {
+  font-size: 10px;
+  color: #a2aab4;
+  min-height: 29px;
+  display: flex;
+  align-items: center;
+}
+.stack-tone-scheduled {
+  --stack-accent: #ac7d16;
+  --stack-bg: #fff8e5;
+  --stack-border: #eddb9d;
+  --stack-ink: #755209;
+}
+.stack-tone-confirmed {
+  --stack-accent: #2879c4;
+  --stack-bg: #edf5ff;
+  --stack-border: #c8def5;
+  --stack-ink: #225b91;
+}
+.stack-tone-completed {
+  --stack-accent: #308254;
+  --stack-bg: #edf8f0;
+  --stack-border: #c4e3ce;
+  --stack-ink: #286640;
+}
+.stack-tone-cancelled {
+  --stack-accent: #b94c47;
+  --stack-bg: #fdf0ef;
+  --stack-border: #edcbc8;
+  --stack-ink: #91403b;
+}
+.stack-tone-absent {
+  --stack-accent: #77818e;
+  --stack-bg: #f1f3f6;
+  --stack-border: #d9dfe6;
+  --stack-ink: #596471;
+}
+.stack-appointment {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  background: var(--stack-bg);
+  color: var(--stack-ink);
+  border: 1px solid var(--stack-border);
+  border-left: 4px solid var(--stack-accent);
+  border-radius: 9px;
+  min-height: 72px;
+}
+.stack-appointment:hover,
+.stack-appointment[aria-expanded="true"] {
+  box-shadow: 0 2px 7px #263d5514;
+  border-color: var(--stack-accent);
+}
+.stack-box-head,
+.stack-box-body {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-size: 12px;
+}
+.stack-box-head strong {
+  font-size: 13px;
+}
+.stack-status {
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stack-appointment small {
+  color: inherit;
+  opacity: 0.8;
+  font-size: 10px;
+}
+.stack-detail {
+  margin-top: 8px;
+}
+.stack-detail .agenda-list {
+  padding: 0;
+}
+@media (max-width: 760px) {
+  .agenda-legend {
+    padding: 0 12px 10px;
+    gap: 8px 12px;
+  }
+  .stack-help {
+    padding: 0 12px 12px;
+  }
+  .agenda-stack {
+    padding: 0 12px 15px;
+  }
+  .stack-slot {
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 6px;
+    padding: 10px 0;
+  }
+  .stack-slot-items {
+    padding-left: 8px;
+  }
+  .stack-hour {
+    font-size: 10px;
+  }
+  .stack-appointment {
+    padding: 10px;
+    gap: 7px;
+  }
+  .stack-box-head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+  .stack-box-head strong {
+    font-size: 12px;
+  }
+  .stack-box-body {
+    font-size: 11px;
+  }
+  .stack-status {
+    font-size: 9px;
+  }
+  .agenda-view-switch {
+    margin-left: 0;
+  }
+  .agenda-view-switch button {
+    min-height: 44px;
+  }
+}
