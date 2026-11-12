@@ -173,3 +173,5 @@ npm run dev -- --host 0.0.0.0
 Use no celular o endereço **Network** exibido pelo Vite, como `http://192.168.1.10:5173`. Não use `127.0.0.1` no celular para acessar o computador. O servidor precisa continuar rodando; o firewall/rede deve permitir o acesso local.
 
 Os dados são locais por dispositivo e endereço: abrir pelo IP da rede não compartilha automaticamente os dados de 127.0.0.1. A configuração de senha demonstrativa usa Web Crypto, disponível em localhost ou HTTPS; via IP com HTTP pode não estar disponível. Não houve teste em aparelhos físicos.
+
+Quando há somente um profissional ativo, a Agenda seleciona esse profissional automaticamente, esconde o filtro e mostra uma única coluna na Pilha. Isso vale também para Lista, Mês e Ano. Cadastros excluídos não criam colunas vazias; o histórico continua preservado nos registros e métricas. Se não houver ativos, a agenda permite consultar os cadastros não excluídos.

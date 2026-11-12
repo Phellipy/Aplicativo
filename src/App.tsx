@@ -285,9 +285,26 @@ export default function App() {
     role || "professional",
     currentProfessional,
   );
-  const scoped = visible.filter(
-      (a) => person === "Todos" || a.professional === person,
-    ),
+  const agendaProfessionals = admin
+    ? activeProfessionals.length
+      ? activeProfessionals
+      : records
+          .filter((record) => !record.deletedAt)
+          .map((record) => record.name)
+    : [currentProfessional];
+  const agendaPerson =
+    agendaProfessionals.length === 1
+      ? agendaProfessionals[0]
+      : agendaProfessionals.includes(person)
+        ? person
+        : "Todos";
+  const scoped = visible.filter((a) => {
+      if (page !== "Agenda")
+        return person === "Todos" || a.professional === person;
+      return agendaPerson === "Todos"
+        ? agendaProfessionals.includes(a.professional)
+        : a.professional === agendaPerson;
+    }),
     today = filterPeriod(
       scoped,
       page === "Dashboard" ? dashboardPeriod : "day",
@@ -1163,15 +1180,18 @@ export default function App() {
                     setExpandedAppointment(null);
                   }}
                 />
-                {admin && (
+                {admin && agendaProfessionals.length > 1 && (
                   <label>
                     Profissional
                     <select
-                      value={person}
-                      onChange={(e) => setPerson(e.target.value)}
+                      value={agendaPerson}
+                      onChange={(e) => {
+                        setPerson(e.target.value);
+                        setExpandedAppointment(null);
+                      }}
                     >
                       <option>Todos</option>
-                      {professionals.map((p) => (
+                      {agendaProfessionals.map((p) => (
                         <option key={p}>{p}</option>
                       ))}
                     </select>
@@ -1199,14 +1219,22 @@ export default function App() {
               <section className="panel">
                 <div className="panel-head">
                   <h2>
-                    {admin ? "Agenda do estabelecimento" : "Minha agenda"}
+                    {admin
+                      ? agendaPerson !== "Todos"
+                        ? `Agenda de ${agendaPerson}`
+                        : "Agenda do estabelecimento"
+                      : "Minha agenda"}
                   </h2>
                   <span className="badge blue">
                     {agendaItems.length} atendimentos ·{" "}
                     {periodLabel(agendaPeriod, date)}
                   </span>
                 </div>
-                {agendaView === "stack" && agendaPeriod !== "day" ? (
+                {agendaProfessionals.length === 0 ? (
+                  <div className="empty">
+                    Cadastre um profissional para visualizar a agenda.
+                  </div>
+                ) : agendaView === "stack" && agendaPeriod !== "day" ? (
                   <AgendaPeriod
                     appointments={scoped}
                     period={agendaPeriod}
@@ -1250,11 +1278,9 @@ export default function App() {
                       schedules={workingSchedules}
                       date={date}
                       laneNames={
-                        admin
-                          ? person === "Todos"
-                            ? professionals
-                            : [person]
-                          : [currentProfessional]
+                        agendaPerson === "Todos"
+                          ? agendaProfessionals
+                          : [agendaPerson]
                       }
                       admin={admin}
                       expanded={expandedAppointment}
