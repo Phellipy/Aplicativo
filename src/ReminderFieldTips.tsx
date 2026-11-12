@@ -13,30 +13,26 @@ export default function ReminderFieldTips({
       meaning: "Nome do estabelecimento salvo nas configurações",
       example: "Navalha & Co.",
     },
-    ...(appointment
-      ? [
-          {
-            field: "{data}",
-            meaning: "Data do agendamento (dia/mês/ano)",
-            example: "11/11/2026",
-          },
-          {
-            field: "{horario}",
-            meaning: "Horário de início do atendimento",
-            example: "09:00",
-          },
-          {
-            field: "{profissional}",
-            meaning: "Nome do profissional do agendamento",
-            example: "Rafael Moura",
-          },
-          {
-            field: "{procedimentos}",
-            meaning: "Todos os procedimentos do agendamento",
-            example: "Corte + barba",
-          },
-        ]
-      : []),
+    {
+      field: "{data}",
+      meaning: "Data do agendamento (dia/mês/ano)",
+      example: "11/11/2026",
+    },
+    {
+      field: "{horario}",
+      meaning: "Horário de início do atendimento",
+      example: "09:00",
+    },
+    {
+      field: "{profissional}",
+      meaning: "Nome do profissional do agendamento",
+      example: "Rafael Moura",
+    },
+    {
+      field: "{procedimentos}",
+      meaning: "Todos os procedimentos do agendamento",
+      example: "Corte + barba",
+    },
   ];
   const id = `reminder-field-tips-${appointment ? "appointment" : "return"}`;
   return (
@@ -58,12 +54,12 @@ export default function ReminderFieldTips({
           className="field-tips-panel"
           aria-label="Como personalizar a mensagem"
         >
-          <h3>Campos disponíveis neste lembrete</h3>
+          <h3>Guia de todos os campos</h3>
           <p>
             Digite os campos na mensagem exatamente como aparecem abaixo, em
-            letras minúsculas e entre chaves. Ao abrir o WhatsApp, eles são
-            substituídos pelos dados do cliente
-            {appointment ? " e do agendamento" : " e do estabelecimento"}.
+            letras minúsculas e entre chaves. Os campos disponíveis para o tipo
+            de lembrete são substituídos pelos dados cadastrados ao abrir o
+            WhatsApp.
           </p>
           <dl>
             {fields.map((item) => (
@@ -74,6 +70,10 @@ export default function ReminderFieldTips({
                 <dd>
                   {item.meaning}
                   <small>Exemplo: {item.example}</small>
+                  {!appointment &&
+                    !["{nome}", "{estabelecimento}"].includes(item.field) && (
+                      <small>Disponível no lembrete de agendamento.</small>
+                    )}
                 </dd>
               </div>
             ))}
