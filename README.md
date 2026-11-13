@@ -1,6 +1,6 @@
-# Navalha & Co. — Gestão v0.1
+# Aplicativo de gestão — Base reutilizável v0.1
 
-Aplicativo demonstrativo de gestão para barbearias, desenvolvido em React, TypeScript e Vite. Implementado na branch `feature/versao-0.1`, sem modificar a `main` e sem publicação.
+Aplicativo demonstrativo de gestão para barbearias, desenvolvido em React, TypeScript e Vite. Implementado na branch `feature/versao-0.1`, sem modificar a `main`. Código disponível no GitHub; nenhum ambiente de produção foi implantado.
 
 ## Executar localmente
 
@@ -18,7 +18,7 @@ npm test
 npm run build
 ```
 
-O build gera `dist/`. O administrador demonstrativo entra sem credencial. Selecione um profissional ativo para explorar seu perfil; quando o administrador configurar uma senha de demonstração, ela é verificada localmente. Não digite dados reais: a aplicação é uma demonstração.
+O build gera `dist/`. O administrador cadastra e-mail e senha fictícia demonstrativa no primeiro acesso local e usa essa credencial nos acessos seguintes. Selecione um profissional ativo para explorar seu perfil; quando o administrador configurar uma senha de demonstração, ela é verificada localmente. Não digite dados reais: a aplicação é uma demonstração.
 
 ## Módulos e fluxos
 
@@ -232,3 +232,16 @@ No primeiro acesso, cadastre e-mail e **senha fictícia demonstrativa** do admin
 **Esqueci a senha do administrador** é exclusivo desse perfil e informa que a recuperação ainda não está conectada. Nenhum e-mail é enviado. A integração futura usará Firebase Authentication para senha/recuperação e autorização validada no backend; Firestore ficará com os dados, sem senhas. Os profissionais continuam com redefinição somente pelo administrador. Veja `docs/firebase-autenticacao.md` para o estado atual e os passos de integração. Não use uma senha real nesta demonstração e não limpe o armazenamento para tentar recuperar a senha, pois isso também remove os dados locais.
 
 Quando há zero ou apenas um profissional ativo, a tela de acesso apresenta somente o administrador, sem seletor de perfil profissional. Com mais profissionais ativos, a opção de acesso profissional continua disponível. Essa simplificação acompanha o modelo demonstrativo atual, no qual o único profissional usa o acesso administrativo.
+
+
+## Usar esta base em outros estabelecimentos
+
+O repositório pode servir como template para cópias por cliente, com nome, domínio e projeto Firebase próprios. Configure uma instalação em um checkout separado:
+
+```bash
+npm run instance:init -- --id empresa-a --name "Empresa A" --domain agenda.empresa-a.com.br --project projeto-empresa-a
+```
+
+O comando gera configurações locais ignoradas pelo Git. O nome inicial e as chaves de armazenamento demonstrativo usam o identificador da instalação. `.env.example` documenta os campos públicos e `firebase.json` prepara Hosting para o build Vite.
+
+**A conexão Firebase real continua pendente.** O aplicativo ainda opera com dados locais demonstrativos; preencher esses campos não ativa autenticação, banco ou recuperação. Nenhum domínio ou projeto externo foi alterado. Veja [o fluxo por cliente e os requisitos antes da produção](docs/instancias.md).

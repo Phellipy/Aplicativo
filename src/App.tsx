@@ -1,3 +1,4 @@
+import { instance, storageKey } from "./instance";
 import AdminLogin from "./AdminLogin";
 import type { DemoAdminAccount } from "./adminAccess";
 import {
@@ -130,14 +131,14 @@ function useStored<T>(
 ) {
   const [value, setValue] = useState<T>(() => {
     try {
-      const v = localStorage.getItem(key);
+      const v = localStorage.getItem(storageKey(key));
       return normalize(v ? JSON.parse(v) : initial);
     } catch {
       return initial;
     }
   });
   useEffect(() => {
-    localStorage.setItem(key, JSON.stringify(value));
+    localStorage.setItem(storageKey(key), JSON.stringify(value));
   }, [key, value]);
   return [value, setValue] as const;
 }
@@ -165,7 +166,7 @@ function Badge({ text }: { text: string }) {
 export default function App() {
   const [establishmentName, setEstablishmentName] = useStored(
     "navalha-v01-establishment-name",
-    "Navalha & Co.",
+    instance.name,
   );
 
   const [confirmProcedureDelete, setConfirmProcedureDelete] = useState(false);
@@ -703,7 +704,7 @@ export default function App() {
               account={adminAccount}
               onSetup={(account) => {
                 localStorage.setItem(
-                  "navalha-v01-admin-account",
+                  storageKey("navalha-v01-admin-account"),
                   JSON.stringify(account),
                 );
                 setAdminAccount(account);
@@ -1701,7 +1702,7 @@ export default function App() {
               onLogo={(value) => {
                 try {
                   localStorage.setItem(
-                    "navalha-v01-logo",
+                    storageKey("navalha-v01-logo"),
                     JSON.stringify(value),
                   );
                 } catch {

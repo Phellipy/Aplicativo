@@ -9,3 +9,8 @@ dist/
 coverage/
 
 .pnpm-store/
+
+# Seleção de projeto e cache locais de cada cliente
+.firebaserc
+.firebase/
+firebase-debug.log*

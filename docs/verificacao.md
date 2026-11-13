@@ -100,3 +100,5 @@ Convites de retorno configuráveis: testes cobrem limite de dias, elegibilidade,
 Conferência visual: prazo alterado temporariamente para 20 dias, refletido no filtro e nos sinalizadores de Clientes. “Pode convidar agora” exibiu apenas os dois clientes demonstrativos elegíveis. Prazo restaurado para 30 dias pela interface. Nenhuma conversa externa foi aberta ou mensagem enviada.
 
 Administrador com senha demonstrativa: 182 testes aprovados e build aprovado. Novos testes verificam e-mail normalizado, senha correta/incorreta, confirmação, ausência de senha em texto puro e persistência da credencial derivada. Recuperação aparece somente no administrador, explicitamente sem conexão e sem envio de e-mail. Nenhum projeto Firebase foi provisionado nem foi feita autenticação externa.
+
+Base reutilizável: testes verificam manutenção das chaves antigas da demonstração, separação de instâncias, configuração declarada sem alegar conexão, geração dos arquivos locais em diretório temporário, recusa de sobrescrita e validação de domínio/ID. 189 testes aprovados. Build de demonstração aprovado. Nenhum projeto Firebase, conta de cliente ou domínio foi conectado/publicado.
