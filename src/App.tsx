@@ -1,3 +1,5 @@
+import AdminLogin from "./AdminLogin";
+import type { DemoAdminAccount } from "./adminAccess";
 import {
   normalizeReturnDays,
   completeClientVisit,
@@ -216,6 +218,10 @@ export default function App() {
     "navalha-v01-return-days",
     30,
     normalizeReturnDays,
+  );
+  const [adminAccount, setAdminAccount] = useStored<DemoAdminAccount | null>(
+    "navalha-v01-admin-account",
+    null,
   );
   const [role, setRole] = useState<Role | null>(null),
     [page, setPage] = useState<Page>("Dashboard"),
@@ -689,9 +695,17 @@ export default function App() {
                 <p>Visão completa do estabelecimento</p>
               </div>
             </div>
-            <button className="primary wide" onClick={() => setRole("admin")}>
-              Entrar como administrador <ArrowUpRight size={18} />
-            </button>
+            <AdminLogin
+              account={adminAccount}
+              onSetup={(account) => {
+                localStorage.setItem(
+                  "navalha-v01-admin-account",
+                  JSON.stringify(account),
+                );
+                setAdminAccount(account);
+              }}
+              onLogin={() => setRole("admin")}
+            />
             <div className="login-professional">
               <label>
                 Perfil profissional

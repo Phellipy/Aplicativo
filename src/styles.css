@@ -4504,3 +4504,31 @@ textarea:focus-visible {
 .client-tools {
   flex-wrap: wrap;
 }
+
+.admin-login form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.admin-login label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+.admin-login > .text-button {
+  margin-top: 10px;
+  font-size: 12px;
+  min-height: 40px;
+}
+.admin-recovery {
+  display: block;
+  margin-top: 8px;
+}
+.admin-recovery p {
+  margin: 8px 0;
+  font-size: 12px;
+}
+.admin-recovery .secondary {
+  margin-top: 6px;
+}

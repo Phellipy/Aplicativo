@@ -98,3 +98,5 @@ Verificação final no navegador: o controle de pagamento do Início abriu o mod
 Convites de retorno configuráveis: testes cobrem limite de dias, elegibilidade, consentimento/telefone, intervalo de sete dias, alerta a partir da terceira abertura, reset por nova conclusão sem apagar histórico, alteração de pagamento sem reset, preservação ao editar cliente e recarga do armazenamento. 179 testes aprovados.
 
 Conferência visual: prazo alterado temporariamente para 20 dias, refletido no filtro e nos sinalizadores de Clientes. “Pode convidar agora” exibiu apenas os dois clientes demonstrativos elegíveis. Prazo restaurado para 30 dias pela interface. Nenhuma conversa externa foi aberta ou mensagem enviada.
+
+Administrador com senha demonstrativa: 182 testes aprovados e build aprovado. Novos testes verificam e-mail normalizado, senha correta/incorreta, confirmação, ausência de senha em texto puro e persistência da credencial derivada. Recuperação aparece somente no administrador, explicitamente sem conexão e sem envio de e-mail. Nenhum projeto Firebase foi provisionado nem foi feita autenticação externa.
