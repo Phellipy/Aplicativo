@@ -51,9 +51,9 @@ export default function AppointmentFields({
       recurrenceError = (error as Error).message;
     }
   }
-  const enabled = procedures.filter((p) =>
-    p.professionals?.includes(professional),
-  );
+  const enabled = procedures
+    .filter((p) => p.professionals?.includes(professional))
+    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
   const chosen = enabled.filter((p) => selected.includes(p.id));
   const setupHint = !professional
     ? "Cadastre e habilite um profissional antes de agendar."
