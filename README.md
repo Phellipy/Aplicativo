@@ -1,247 +1,55 @@
-# Aplicativo de gestão — Base reutilizável v0.1
+# Aplicativo de Gestão — versão 0.1
 
-Aplicativo demonstrativo de gestão para barbearias, desenvolvido em React, TypeScript e Vite. Implementado na branch `feature/versao-0.1`, sem modificar a `main`. Código disponível no GitHub; nenhum ambiente de produção foi implantado.
+Base reutilizável em React, TypeScript e Vite para um estabelecimento por implantação, com domínio, projeto Firebase e backend próprios. Contém as melhorias revisadas no aplicativo Dalisson, sem ligar esta base ao banco, domínio ou credenciais daquele cliente.
 
 ## Executar localmente
 
-Requisitos: Node.js 20.19+ (ou 22.12+) e npm 10+.
+Requer Node.js 20.19+ e npm 10+.
 
 ```bash
 npm install
 npm run dev
-```
-
-Abra http://127.0.0.1:5173/. Se a porta estiver ocupada, use o endereço informado pelo Vite. O servidor é restrito ao computador local por padrão.
-
-```bash
 npm test
 npm run build
 ```
 
-O build gera `dist/`. O administrador cadastra e-mail e senha fictícia demonstrativa no primeiro acesso local e usa essa credencial nos acessos seguintes. Selecione um profissional ativo para explorar seu perfil; quando o administrador configurar uma senha de demonstração, ela é verificada localmente. Não digite dados reais: a aplicação é uma demonstração.
+O endereço padrão é http://127.0.0.1:5173. Sem `.env.local`, inicia em **demonstração local**, identificada na interface: dados e credenciais demonstrativas são armazenados no navegador, sem segurança ou integração real. Para testar pelo celular na mesma rede, use `npm run dev -- --host 0.0.0.0` e abra o IP local do computador na porta 5173.
 
-## Módulos e fluxos
+## Funcionalidades
 
-- **Login**: seleção explícita de perfil demonstrativo e verificação local de senha fictícia, quando configurada pelo administrador. Não representa autenticação segura.
-- **Dashboard**: períodos Hoje, Mês e Ano, taxa de ocupação realizada, valores e repasses, filtros por profissional e alertas de reativação.
-- **Métricas** (administrador): gráficos de atendimentos, financeiro, clientes, faltas, pagamentos e ocupação, com Dia/Semana/Mês/Ano e filtro por profissional.
-- **Agenda**: Lista ou Pilha, períodos Hoje/Mês/Ano, cadastro com múltiplos procedimentos, horários filtrados por jornada e ausências, validação de habilitação e sobreposição de horários, confirmação explícita do atendimento, mudança de status e atualização da última visita ao concluir. Pagamento manual por dinheiro, Pix, cartão de crédito ou cartão de débito, com opção Não pago.
-- **Clientes**: cadastro, edição, exclusão/restauração, busca, última visita, autorização e abertura manual do WhatsApp com mensagem revisada.
-- **Financeiro**: valores recebidos de serviços concluídos com pagamento registrado, repasses de todos os concluídos e saldo antes de despesas (recebido menos repasses dos serviços pagos). O saldo não é apresentado como lucro.
-- **Profissionais**: cadastro, habilitação/desabilitação, exclusão/restauração e janela individual com Acesso, Jornada e Procedimentos e repasses.
-- **Procedimentos**: cadastro e edição somente de nome, duração e valor. Habilitação de serviços e repasses são configurados exclusivamente na janela do profissional pelo administrador. Novos atendimentos fixam os dados do serviço e do repasse.
-- **Configurações**: administrador edita e pré-visualiza a mensagem de retorno; profissional configura sua própria jornada e ausências.
+- Login administrativo, Dashboard, Agenda, Clientes, Financeiro, Métricas, Profissionais, Procedimentos e Configurações.
+- Agenda em lista e pilha proporcional à duração, reagendamento por arraste quando suportado, múltiplos procedimentos, horários disponíveis e recorrência semanal. Cancelados liberam o horário e saem da agenda ativa.
+- Confirmação de presença, falta, cancelamento e conclusão com dinheiro, Pix, crédito, débito ou não pago; o pagamento pode ser corrigido depois.
+- Clientes editáveis e excluíveis, CPF/CNPJ opcional; importação vCard de até 10.000 contatos, apenas celulares, deduplicação e gravação em lotes.
+- Financeiro por dia/semana/mês/ano, exportação Excel e documento do cliente; métricas, gráficos, ocupação por disponibilidade e exportação PDF pela impressão.
+- Profissionais habilitáveis, desabilitáveis e excluíveis, jornada e restrições; procedimentos e repasses definidos pelo administrador. Seletores são ocultados quando resta um profissional ativo.
+- Duração dos procedimentos em minutos ou horas e minutos: qualquer minuto inteiro de 1 a 540 (9 horas).
+- Presença automática conforme a jornada de São Paulo e marcações manuais diárias. O estado do dia anterior não bloqueia o novo expediente.
+- Nome, iniciais, logo de acesso, tema claro/escuro, cores e mensagens configuráveis.
+- Lembretes de agendamento e retorno abrem o WhatsApp manualmente. Contadores indicam aberturas, não envio confirmado; não há disparo automático.
 
-O administrador visualiza os módulos completos. Cada profissional ativo visualiza somente seus atendimentos, seus indicadores, seus procedimentos, seus ganhos e sua jornada. **Esses filtros são apenas demonstração de interface: todos os dados estão no navegador e não existe autorização segura.**
+## Integração real por cliente
 
-## Contato manual pelo WhatsApp
+O modo `firebase` usa Firebase Authentication, Firestore e regras de autorização. O administrador é provisionado fora da interface; somente ele possui recuperação por e-mail. O acesso profissional usa Worker Cloudflare separado, usuário/senha e sessão opaca: somente o administrador redefine a senha. O profissional pode cadastrar clientes e agendar exclusivamente na própria agenda, consultar seus resultados e atualizar seus atendimentos.
 
-A referência de atendimento da demonstração é **11/11/2026**. Os clientes há 30 dias ou mais sem atendimento são identificados para retorno, mas não há disparo automático.
+A configuração pública do SDK não provisiona serviços nem concede autorização. Cada nova implantação requer configuração, regras, administrador e testes próprios. Não reutilize o projeto, Worker ou segredos de outro estabelecimento.
 
-Em **Clientes → WhatsApp**, revise ou edite o texto e toque em **Abrir no WhatsApp**. O link `wa.me` inclui telefone e mensagem, abre a conversa em outra aba/aplicativo e deixa a confirmação final de envio para você no WhatsApp. O botão exige autorização registrada, cliente ativo, número válido com DDD e mensagem preenchida. Para números brasileiros sem DDI, acrescenta 55; para outros países, informe + e o código do país.
+Consulte [instalação por cliente](docs/instancias.md), [autenticação](docs/firebase-autenticacao.md) e [backend profissional](access-backend/README.md).
 
-A aplicação registra somente **solicitação de abertura**, nunca “enviado”. Não há API, envio automático, importação de contatos, retorno de entrega/leitura ou garantia de que uma nova aba foi aberta pelo navegador. Os registros antigos de fila/aprovação são mantidos no armazenamento por compatibilidade, mas não provocam envio nem entram como abertura de WhatsApp.
+## Verificações
 
-Para evitar cliques repetidos, o mesmo texto para o mesmo cliente só pode ter nova abertura após **7 dias**, contados pelo relógio do navegador. Outra mensagem, revisada manualmente, pode ser preparada. A proteção é local e não impede repetição diretamente no WhatsApp ou em outro dispositivo; limpar os dados remove o histórico.
-
-## Armazenamento e limitações
-
-- Dados fictícios persistidos no `localStorage`, com chaves `navalha-v01-*`; perfil de entrada não persiste. Para reiniciar a demonstração, remova essas chaves nas ferramentas do navegador.
-- Sem backend, banco de dados, autenticação, controle de acesso real, auditoria ou sincronização entre dispositivos. Não usar com dados reais.
-- Cadastro de profissionais é local e demonstrativo. Autenticação/autorização no servidor, despesas, transações financeiras e relatórios exportáveis ficam para versões futuras.
-- Agenda em Lista/Pilha, com calendário mensal e resumo anual. Sem visão semanal, troca de profissional pelo arraste ou edição completa do atendimento.
-- Repasses percentuais; valores fixos, descontos, pagamento e conciliação não implementados.
-- Persistência requer armazenamento habilitado no navegador. Limpar os dados remove também o histórico de bloqueio de campanhas. Nenhuma garantia contra duplicação em múltiplas abas/dispositivos.
-- Tipografia pode carregar do Google Fonts; fontes do sistema servem como alternativa. Nenhum dado de cliente é enviado a esse serviço.
-
-## Referências e organização
-
-Todas as sete telas HTML, `canvas.json` e `LEIA-ME.txt` do ZIP fornecido foram analisados como referência visual e de fluxo. A pasta `referencias` não existia no checkout inicial; o ZIP foi fornecido em Downloads durante o desenvolvimento. Consulte [docs/referencias.md](docs/referencias.md).
-
-- `src/App.tsx`: navegação, componentes comuns, módulos e formulários.
-- `src/domain.ts`: tipos, dados fictícios e regras de períodos, disponibilidade, múltiplos serviços, visibilidade, reativação, conflitos e repasses.
-- `src/AppointmentFields.tsx`: seleção múltipla e horários disponíveis; reagendamento com disponibilidade.
-- `src/WorkScheduleEditor.tsx`: jornada semanal e restrições pontuais.
-- `src/ProfessionalsPanel.tsx`: cadastro, situação, exclusão/restauração e configuração do profissional.
-- `src/ClientsPanel.tsx`, `src/contacts.test.ts`: edição/exclusão/restauração, abertura manual de WhatsApp e testes.
-- `src/demoAccess.ts`, `src/demoAccess.test.ts`: derivação/verificação local de senhas fictícias e testes.
-- `src/AgendaStack.tsx`: escala temporal proporcional, colunas por profissional e arraste.
-- `src/PeriodControls.tsx`, `src/AgendaPeriod.tsx`: períodos e navegação de calendário.
-- `src/MetricsPage.tsx`, `src/MetricCharts.tsx`: painéis e gráficos responsivos, com tabelas acessíveis para consultar os valores.
-- `src/metrics.ts`, `src/metrics.test.ts`: cálculo de ocupação, períodos, recebimentos, rankings e testes.
-- `src/domain.test.ts`: testes das regras principais com Vitest.
-- `src/styles.css`: estilos compartilhados e layouts para desktop, tablet e celular.
-- `src/main.tsx`, `index.html`: entrada do aplicativo.
-- `package.json`, `package-lock.json`, `tsconfig.json`, `vite.config.ts`, `.gitignore`: scripts, dependências e configuração.
-
-## Verificação manual sugerida
-
-1. Entre como administrador, filtre o dashboard e abra a agenda.
-2. Cadastre um horário livre; tente repetir o mesmo horário/profissional e veja o bloqueio.
-3. Conclua um atendimento e confira o financeiro e a última visita do cliente.
-4. Em Profissionais, clique no nome e abra Procedimentos e repasses para alterar um percentual; novos atendimentos usam o percentual e os anteriores mantêm o valor fixado.
-5. Em Clientes, edite um cadastro e confira os dados na agenda. Revise o texto no botão WhatsApp; o envio é feito por você no WhatsApp, sem fila automática.
-6. Saia e entre como Rafael: outros profissionais e campanhas deixam de aparecer; Configurações exibe apenas a própria jornada.
-7. Reduza a largura para 390px e 768px; navegue pelo menu e pelos formulários usando toque/teclado.
-
-### Registro de pagamentos na agenda
-
-Os estados da agenda são **Agendado**, **Confirmado**, **Cancelado** e **Não compareceu**. Novos horários entram como Agendado. Use o botão amarelo **Confirmar** para confirmar; não há etapa de iniciar atendimento nem seletor de status. Cada cartão mostra **Confirmar presença**, **Atendimento Concluído** e **Cancelar** ao final. Após a confirmação, **Confirmar presença** dá lugar a **Não compareceu**. A conclusão também está disponível para horários Agendados. Registros antigos em andamento são convertidos para Confirmado e pendentes para Agendado, preservando pagamentos. Para finalizar o serviço, clique em **Atendimento Concluído**: a janela apresenta cinco botões — Dinheiro, Pix, Cartão de crédito, Cartão de débito e Não pago. A seleção conclui o atendimento e registra o pagamento integral (ou mantém a pendência ao escolher Não pago). Fechar ou cancelar a janela preserva os dados. Em serviços concluídos, **Alterar pagamento** reabre a janela para correção. Serviços antigos sem forma registrada aparecem como Não pago. O registro é manual e local, sem cobrança, geração de Pix, transação em cartão ou conciliação. Não há parcelamento, pagamento dividido ou parcial.
-
-As opções de pagamento têm ícones e cores: Dinheiro verde, Pix turquesa, Crédito azul, Débito roxo e Não pago laranja. A escolha salva e fecha a janela em um toque. O botão verde Atendimento Concluído aparece nos agendados e confirmados; ao finalizar, aparece o indicador de conclusão com pagamento separado e ação discreta de correção.
-
-### Agenda em pilha
-
-Na Agenda, alterne entre **Lista** e **Pilha**. A preferência fica salva no navegador. A Pilha mostra uma escala vertical de tempo (2px/minuto) e uma coluna por profissional. A caixa começa no horário agendado e termina após a duração total dos serviços, com início, fim, cliente, procedimentos e valor. A largura é dividida quando há registros antigos sobrepostos. No celular, a rolagem horizontal fica dentro da grade; filtrar por profissional facilita a leitura.
-
-Cores: Agendado amarelo, Confirmado azul, Concluído verde, Cancelado vermelho e Não compareceu cinza, sempre com texto do status e legenda. Toque na caixa para expandir as ações existentes, incluindo conclusão e pagamento. Os filtros de data e profissional e os limites demonstrativos de cada perfil são preservados. Horas vazias indicam apenas ausência de agendamentos, sem garantir disponibilidade de jornada. Há arraste pela alça com encaixe a cada 15 minutos e posição/altura proporcionais ao horário e à duração. Áreas fora da jornada e ausências aparecem como indisponíveis.
-
-### Arraste e reagendamento
-
-Na **Pilha**, arraste a caixa pela alça ⋮⋮ até um dos destinos disponíveis destacados, a cada 15 minutos, dentro da jornada cadastrada. No celular, pressione a alça por aproximadamente 300ms antes de mover. A rolagem continua disponível fora da alça; perto das bordas superior e inferior há rolagem automática durante o arraste. Escape, cancelamento do ponteiro ou soltar fora de um destino descartam a operação. Um simples toque na alça não altera o horário.
-
-**Reagendar** abre um formulário para escolher data e hora por toque ou teclado, tanto na Lista quanto na Pilha. Somente Agendados e Confirmados podem ser movidos. A validação usa toda a agenda do profissional, exclui o próprio registro, respeita a duração total dos procedimentos, os dias e horas de trabalho e as restrições pontuais. Conflitos mantêm o horário original. Cliente, profissional, procedimento, preço, percentual de repasse, status e pagamento permanecem iguais. O perfil profissional só pode reagendar seus registros demonstrativos.
-
-Alterações persistem somente no navegador. Não há notificações, confirmação pelo cliente, sincronização multiusuário ou histórico de auditoria. Gestos de toque precisam de validação adicional em aparelhos físicos antes de uso real.
-
-### Procedimentos, jornada e ausências
-
-Ao criar um atendimento, escolha o profissional e marque um ou mais procedimentos habilitados. A duração e o valor são somados; o preço, duração e repasse de cada serviço são fixados no atendimento. A lista de horários mostra somente intervalos em que todos os procedimentos cabem antes do fim da jornada, sem sobreposição com atendimentos ou ausências. Cancelados e ausências de clientes não ocupam horários futuros; registros concluídos mantêm o histórico de ocupação.
-
-Em **Profissionais → clique no nome → Jornada**, o administrador marca os dias ativos e define início/fim. A jornada demonstrativa inicial é segunda a sexta, 09h–18h; sábado, 09h–13h; domingo desmarcado. Alterações exigem **Salvar jornada semanal**. Desmarcar um dia bloqueia esse dia semanalmente. Para uma ocorrência isolada, use **Ausências e restrições**, com data e intervalo ou dia inteiro; adicione restrições também para pausas/almoço. É possível remover restrições pontuais.
-
-O profissional configura apenas a própria disponibilidade em **Configurações**. Restrições novas não cancelam atendimentos existentes: a interface lista os afetados e marca-os para revisão. Novos agendamentos e reagendamentos/arraste já respeitam os bloqueios. A duração dos registros antigos sem cópia dos serviços usa o cadastro atual como compatibilidade; novos registros preservam a duração mesmo se o cadastro mudar.
-
-### Hoje, Mês e Ano
-
-No **Início**, os três períodos atualizam os atendimentos, valores, repasses e ocupação; a capacidade considera jornadas e ausências cadastradas. O seletor de referência permite escolher dia, mês ou ano. **Hoje** retorna à data demonstrativa 11/11/2026.
-
-Na **Agenda**, a Lista mostra todos os registros do período escolhido. Na Pilha, **Ano** exibe os 12 meses; selecionar um mês abre seu calendário; selecionar um dia abre a grade de horários proporcional. Os filtros de profissional continuam aplicados em todos os períodos. Meses sem dados ficam vazios; não são criados totais fictícios para preencher o calendário.
-
-### Catálogo, profissionais e acesso demonstrativo
-
-**Procedimentos** guarda somente nome, duração e valor, com botão Editar. Cadastrar um procedimento não o habilita automaticamente para nenhum profissional. Editar o catálogo não altera os serviços, preços, duração e repasses já fixados nos atendimentos existentes; registros antigos sem cópia dos serviços são preservados antes da primeira edição.
-
-Em **Profissionais**, use **Novo profissional**, **Habilitar** ou **Desabilitar**. Clique no nome para abrir:
-
-- **Acesso:** somente o administrador define/altera uma senha fictícia de demonstração, com confirmação. Ela passa a ser solicitada ao explorar aquele perfil.
-- **Jornada:** dias e horários de trabalho, pausas e ausências. O profissional continua podendo ajustar sua própria jornada em Configurações.
-- **Procedimentos e repasses:** somente o administrador marca os serviços habilitados e o percentual de cada um para aquele profissional. Alterações afetam novos atendimentos.
-
-Desabilitar remove o profissional dos novos agendamentos e da seleção de acesso, preservando vínculos e histórico. Profissionais novos começam ativos, com jornada demonstrativa padrão e sem serviços atribuídos. Configure os serviços antes de agendar.
-
-Os vínculos e percentuais antigos são migrados para `navalha-v01-professional-records`; o catálogo persistido fica somente com ID, nome, duração e preço. A vinculação usada no agendamento é derivada dos profissionais ativos.
-
-**Senhas são apenas demonstração local:** a aplicação guarda no navegador uma derivação PBKDF2/SHA-256 com sal aleatório, nunca a senha em texto puro. Não há servidor, sessão segura, recuperação de senha, limite de tentativas ou proteção real dos dados. Não use senhas reais. Um backend com autorização no servidor será necessário para produção. Senhas e derivações geradas durante o uso não são incluídas no repositório.
-
-### Taxa de ocupação e gráficos de métricas
-
-A taxa de ocupação do Início e de Métricas é **horas de serviços concluídos dentro da disponibilidade ÷ horas disponíveis da equipe × 100**. Por exemplo, 2 horas atendidas em 8 horas disponíveis equivalem a 25%. São descontadas restrições e folgas; atendimentos sobrepostos do mesmo profissional não duplicam tempo. Profissionais diferentes somam sua capacidade. Agendados e Confirmados não contam como tempo já atendido. Sem jornada disponível, a taxa aparece como “—”; com jornada e nenhum serviço concluído, aparece 0%.
-
-Esta versão estima o tempo atendido pela duração fixada nos procedimentos, sem cronômetro de início/término efetivo. Usa a jornada atual dos profissionais habilitados para todo o período consultado, inclusive dias futuros. Alterações de jornada/desativação alteram a base histórica, pois ainda não há histórico de vigência de jornadas. Logo, não é uma medição de tempo real nem uma comparação automática com metas de desempenho.
-
-A aba **Métricas** é exclusiva do administrador e oferece:
-
-- Dia, semana (segunda a domingo), mês e ano, com data de referência e profissional.
-- Concluídos e faltas por hora/dia/mês, conforme o período.
-- Recebido e saldo após repasses dos serviços pagos, antes de despesas.
-- Top 10 clientes por atendimentos concluídos, com valor total dos serviços.
-- Até 10 clientes com mais faltas. A taxa individual e geral considera somente Concluídos e Não compareceu; não inclui confirmações futuras nem cancelamentos.
-- Gráfico circular por valor recebido em Cartão (crédito + débito), Dinheiro e Pix.
-- Ocupação por profissional, ticket médio, valores a receber, distribuição de status e resumo dos serviços concluídos.
-
-Recebimentos são somente os serviços concluídos com forma de pagamento registrada. Os gráficos financeiros agrupam pela data do atendimento: não existe data de compensação/pagamento efetivo. Custos, taxas, tributos, estornos e despesas não estão cadastrados; o saldo não representa lucro. Os rankings usam o nome nos registros locais e ainda não distinguem clientes homônimos.
-
-Gráficos vazios não recebem dados artificiais. No celular, os gráficos de evolução têm rolagem própria para manter a leitura; os valores também podem ser consultados em **Ver dados do gráfico**.
-
-### Editar e excluir cadastros
-
-O administrador pode **editar nome, telefone, última visita e autorização do cliente**. Ao corrigir o nome, os atendimentos vinculados são atualizados por ID (ou nome legado), preservando serviços, datas, status, valores e pagamentos. Novos registros não aceitam nomes duplicados; restaure um excluído em vez de criar outro cadastro com o mesmo nome.
-
-Em **Clientes** e **Profissionais**, **Excluir** pede confirmação e remove o cadastro da lista ativa. A seção **Excluídos** permite restaurar. Esta é uma exclusão reversível: dados e histórico são preservados, sem exclusão permanente. Atendimentos em aberto não são cancelados automaticamente; a confirmação informa a necessidade de revisão. Clientes excluídos não aparecem no novo agendamento nem podem abrir mensagens. Profissionais excluídos perdem acesso demonstrativo e disponibilidade; ao restaurar, voltam desabilitados até o administrador habilitá-los.
-
-### Testar em celular
-
-No computador, abra o aplicativo no Chrome e use as ferramentas do desenvolvedor (macOS: ⌘⌥I; alternância de dispositivo: ⌘⇧M), escolhendo 390 × 844 px ou um modelo de celular.
-
-Para abrir em um celular real, com Node.js/npm instalados, conecte os dois dispositivos ao mesmo Wi-Fi e execute no repositório:
+`npm test` executa os testes unitários; `npm run build` gera o manual, valida TypeScript do frontend/backend e compila a aplicação. Para regras e persistência, instale Firebase CLI e Java compatível, depois execute:
 
 ```bash
-npm run dev -- --host 0.0.0.0
+firebase emulators:exec --only firestore --project demo-gestao-rules "npm run test:rules"
 ```
 
-Use no celular o endereço **Network** exibido pelo Vite, como `http://192.168.1.10:5173`. Não use `127.0.0.1` no celular para acessar o computador. O servidor precisa continuar rodando; o firewall/rede deve permitir o acesso local.
+Validação desta atualização: **277 testes unitários e 18 testes de regras/persistência passaram**, além do build.
 
-Os dados são locais por dispositivo e endereço: abrir pelo IP da rede não compartilha automaticamente os dados de 127.0.0.1. A configuração de senha demonstrativa usa Web Crypto, disponível em localhost ou HTTPS; via IP com HTTP pode não estar disponível. Não houve teste em aparelhos físicos.
+Os testes do emulador usam dados fictícios e não acessam produção. O build pode avisar sobre tamanho dos pacotes Firebase e ExcelJS; ExcelJS é carregado sob demanda.
 
-Quando há somente um profissional ativo, a Agenda seleciona esse profissional automaticamente, esconde o filtro e mostra uma única coluna na Pilha. Isso vale também para Lista, Mês e Ano. Cadastros excluídos não criam colunas vazias; o histórico continua preservado nos registros e métricas. Se não houver ativos, a agenda permite consultar os cadastros não excluídos.
+## Manual e limites
 
-O administrador pode alterar o nome do estabelecimento em Configurações. A marca usa as iniciais do nome, e a alteração é salva apenas neste navegador. Nos lembretes, `{estabelecimento}` insere o nome atual; textos personalizados existentes são mantidos.
+O [manual do usuário](docs/manual-usuario.md) é convertido para `/manual.html` no build e pode ser impresso como PDF. O backend profissional exige atualização manual para refletir mudanças de outros aparelhos. As restrições e verificações de horário não substituem um bloqueio global entre todas as operações administrativas simultâneas. Não há cobrança, Pix bancário, envio automático de WhatsApp, auditoria completa ou backup automático implementados.
 
-O catálogo de procedimentos usa linhas compactas. Em Editar procedimento, Excluir procedimento pede confirmação e remove o item do catálogo e das associações profissionais, preservando os dados dos atendimentos já cadastrados.
-
-Para repetir atendimentos, marque **Atendimento recorrente** no novo agendamento, escolha os dias da semana, a data inicial e **Repetir até** (máximo de um ano). O horário é escolhido pela disponibilidade da primeira ocorrência; ao salvar, todas as datas são validadas contra a jornada, ausências e conflitos. Se qualquer ocorrência estiver indisponível, nenhuma é salva e o aviso identifica as datas a revisar. Cada atendimento nasce como Agendado, com os mesmos procedimentos, valores e profissional, e pode ser reagendado, confirmado ou cancelado individualmente. Não há geração automática após a data final nem edição em lote da série nesta versão.
-
-O controle no topo alterna **Aberto/Fechado** para o estabelecimento e **Presente/Ausente** para um profissional. O administrador escolhe o alvo no seletor; o perfil profissional registra apenas a própria presença. Fechar o estabelecimento pausa a disponibilidade de todos; uma saída individual pausa apenas aquele profissional. Reabrir ou registrar chegada retoma a contagem sem preencher o intervalo fechado. Os registros são locais, persistem ao recarregar e usam o horário real de São Paulo, não a data demonstrativa consultada. O ícone “i” mostra os últimos registros do alvo.
-
-Na ocupação, os intervalos de presença são cruzados com jornada e restrições, tanto para horas disponíveis quanto para serviços concluídos. No dia em controle, só se considera o tempo decorrido; após o início do controle, dias futuros não têm presença presumida. O estado atravessa a meia-noite: fechado/ausente permanece assim até reabrir/registrar chegada. Antes do primeiro fechamento presume-se presença desde o início da jornada daquele dia; dias anteriores ao início do controle continuam usando jornada prevista, com aviso na métrica. Para registrar a chegada desde o início, deixe o estado fechado/ausente ao encerrar o dia anterior. Não há detecção automática de presença, relógio de ponto, sincronização entre dispositivos ou autenticação real. Os botões não cancelam agendamentos nem alteram receitas.
-
-Com **apenas um profissional ativo**, o seletor do topo desaparece: um único botão Presente/Ausente registra presença e abertura do estabelecimento juntos, evitando um fechamento oculto bloquear a contagem. Com mais profissionais, os controles permanecem separados. Em dia da semana desmarcado na jornada, o profissional começa Ausente; uma chegada explícita gera tempo excepcional apenas daquele horário até a saída (ou até agora). Não presume presença na folga por ter ficado Presente no dia anterior. Restrições manuais continuam bloqueando esse tempo e devem ser revistas se a ausência foi cancelada. O registro de presença afeta a ocupação, não libera automaticamente horários para agendamento fora da jornada: ajuste a disponibilidade para agendar nesse dia. Logout e fechamento do navegador não registram saída; os dados e o último estado persistem no mesmo navegador/origem.
-
-### Relatórios e documentos de clientes
-
-- **Início** e Agenda incluem Semana, de segunda a domingo, inclusive ao atravessar mês/ano.
-- **Financeiro** permite escolher Dia, Semana, Mês ou Ano e uma data de referência. Os totais, tabela e Excel usam o mesmo período e o escopo do perfil atual. São listados os serviços concluídos, pagos ou pendentes; cancelados/agendados não entram.
-- **Exportar Excel** baixa um arquivo `.xlsx` real, com cabeçalhos, filtro, linhas congeladas, valores numéricos, totais e documentos como texto (preserva zeros à esquerda). ExcelJS é carregado somente ao exportar. A exportação é local, sem envio a servidores.
-- **CPF ou CNPJ** é opcional no cadastro/edição de clientes. Aceita 11 ou 14 dígitos e remove pontuação. Não consulta Receita nem valida dígitos verificadores. A coluna financeira mostra o documento atual do cliente, identificado por ID (ou nome nos registros antigos), inclusive se excluído; sem documento, mostra “—”. Use apenas dados fictícios nesta demonstração.
-- **Métricas → Exportar PDF** abre a impressão do navegador com layout de relatório, nome do estabelecimento, período, filtro profissional, indicadores e gráficos. Escolha **Salvar como PDF**; o aplicativo não salva PDF silenciosamente. Para melhor resultado, use A4 paisagem e desative os cabeçalhos/rodapés adicionados pelo navegador. A paginação final depende do navegador.
-- Os relatórios mantêm a identificação de dados demonstrativos e não representam comprovantes fiscais ou bancários.
-
-### Configurações e lembrete de agendamento
-
-Configurações do administrador agora têm três abas: **Estabelecimento**, **Lembrete de Agendamento** e **Lembrete de Retorno**. Cada mensagem é salva separadamente. O lembrete de agendamento aceita `{nome}`, `{estabelecimento}`, `{data}`, `{horario}`, `{profissional}` e `{procedimentos}`.
-
-Na Agenda (lista e pilha), o ícone do WhatsApp abre a conversa com a mensagem pronta para o atendimento selecionado, inclusive antes do dia caso necessário. Exige telefone válido e autorização do cliente registrada no cadastro. Não há disparo automático. Após abrir, o ícone fica discreto e mantém o link para nova abertura; a indicação é **Lembrete aberto**, nunca comprovante de envio/leitura. O estado fica salvo neste navegador. Reagendar, trocar os procedimentos, telefone ou texto faz o ícone voltar a ficar destacado. Cancelados, faltas, clientes excluídos e dados incompletos apresentam o motivo de indisponibilidade. A proteção de sete dias permanece exclusiva dos lembretes de retorno; reabrir o lembrete de agendamento é permitido.
-
-### Aparência e logo
-
-Em **Configurações → Estabelecimento**, escolha modo Claro/Escuro e a cor principal dos botões: azul, rosa, roxo, preto, branco, cinza, marrom, laranja, vermelho, verde, amarelo ou turquesa escuro. As alterações são imediatas e ficam salvas no navegador; status e WhatsApp preservam suas cores semânticas. Os textos dos botões têm contraste mínimo de 4,5:1. A impressão das métricas mantém fundo claro.
-
-A logo opcional aparece na tela de acesso. Aceita PNG/JPEG/WebP de até 2 MB, redimensionados para até 512 px antes de armazenar localmente. É possível substituir ou remover; sem logo, aparecem as iniciais. Não existe upload para servidor ou compartilhamento entre aparelhos.
-
-### Pagamento posterior
-
-Atendimentos concluídos como Não pago continuam com a opção **Registrar / alterar pagamento** na Agenda. No Início, clique no status de pagamento da tabela; no Financeiro, clique em **Não pago · Alterar** (ou na forma já registrada). Escolha dinheiro, Pix, crédito, débito ou Não pago. O mesmo atendimento é atualizado, sem duplicação. O recebimento integral continua associado à data do atendimento nesta versão, sem conciliação por data efetiva de pagamento ou pagamentos parciais.
-
-Em cada aba de lembrete, **Dicas de campos** abre uma explicação das variáveis entre chaves, com origem dos dados e exemplos. Agendamento oferece `{nome}`, `{estabelecimento}`, `{data}`, `{horario}`, `{profissional}` e `{procedimentos}`. Retorno oferece `{nome}` e `{estabelecimento}`, pois não está associado a um horário agendado. Os campos devem ser digitados exatamente como listados; a pré-visualização mostra o resultado.
-
-O guia Dicas de campos mostra todos os seis campos nas duas telas. No retorno, os campos ligados a um agendamento são identificados como disponíveis apenas no lembrete de agendamento.
-
-### Convites de retorno: prazo, filtros e ciclos
-
-Em **Configurações → Lembrete de Retorno**, defina **Dias sem atendimento** (inteiro de 1 a 3650) e clique em **Salvar prazo**. O padrão é 30 dias. O prazo é aplicado imediatamente ao sinalizador de Clientes, ao filtro e ao aviso do Início. A referência de dias continua sendo a data demonstrativa indicada no aplicativo.
-
-Clientes permite filtrar Todos, Sem retorno há X+ dias, Pode convidar agora e Mais de 2 lembretes abertos. “Pode convidar agora” exige prazo atingido, cadastro ativo, autorização, telefone válido e nenhum convite aberto nos últimos sete dias no ciclo atual. As aberturas válidas do link de retorno exibem contagem e data da última abertura (São Paulo). Abrir apenas a prévia não incrementa; não há confirmação de envio/leitura pelo WhatsApp. A partir da terceira abertura, o texto da contagem destaca o cuidado com a frequência. A proteção contra repetição da mesma mensagem por sete dias permanece ativa.
-
-Concluir um novo atendimento, pago ou pendente, atualiza a última visita e inicia um novo ciclo com contagem zero. Alterar o pagamento de um atendimento já concluído não reinicia o ciclo. O histórico anterior continua disponível; a contagem e a última abertura exibidas no cadastro se referem ao ciclo atual. Os registros ficam neste navegador.
-
-### Acesso do administrador
-
-No primeiro acesso, cadastre e-mail e **senha fictícia demonstrativa** do administrador (6 a 128 caracteres, com confirmação). Os próximos acessos neste navegador pedem e-mail e senha. A credencial derivada fica no armazenamento local; não oferece segurança real para os dados e não é compartilhada entre aparelhos/origens. Nenhuma senha padrão foi adicionada ao código.
-
-**Esqueci a senha do administrador** é exclusivo desse perfil e informa que a recuperação ainda não está conectada. Nenhum e-mail é enviado. A integração futura usará Firebase Authentication para senha/recuperação e autorização validada no backend; Firestore ficará com os dados, sem senhas. Os profissionais continuam com redefinição somente pelo administrador. Veja `docs/firebase-autenticacao.md` para o estado atual e os passos de integração. Não use uma senha real nesta demonstração e não limpe o armazenamento para tentar recuperar a senha, pois isso também remove os dados locais.
-
-Quando há zero ou apenas um profissional ativo, a tela de acesso apresenta somente o administrador, sem seletor de perfil profissional. Com mais profissionais ativos, a opção de acesso profissional continua disponível. Essa simplificação acompanha o modelo demonstrativo atual, no qual o único profissional usa o acesso administrativo.
-
-
-## Usar esta base em outros estabelecimentos
-
-O repositório pode servir como template para cópias por cliente, com nome, domínio e projeto Firebase próprios. Configure uma instalação em um checkout separado:
-
-```bash
-npm run instance:init -- --id empresa-a --name "Empresa A" --domain agenda.empresa-a.com.br --project projeto-empresa-a
-```
-
-O comando gera configurações locais ignoradas pelo Git. O nome inicial e as chaves de armazenamento demonstrativo usam o identificador da instalação. `.env.example` documenta os campos públicos e `firebase.json` prepara Hosting para o build Vite.
-
-**A conexão Firebase real continua pendente.** O aplicativo ainda opera com dados locais demonstrativos; preencher esses campos não ativa autenticação, banco ou recuperação. Nenhum domínio ou projeto externo foi alterado. Veja [o fluxo por cliente e os requisitos antes da produção](docs/instancias.md).
+Branch de atualização: `feature/versao-0.1`. Esta atualização do repositório não publica nenhum site nem altera instalações existentes.

@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import ReminderFieldTips from "./ReminderFieldTips";
 import LogoSettings from "./LogoSettings";
 import AppearanceSettings from "./AppearanceSettings";
@@ -117,8 +118,9 @@ export default function SettingsPage({
             <LogoSettings logo={logo} name={name} onSave={onLogo} />
             <AppearanceSettings value={appearance} onChange={onAppearance} />
             <div className="notice">
-              Versão 0.1 · Dados demonstrativos locais. O controle de perfil não
-              oferece segurança real e não há sincronização entre aparelhos.
+              {instance.dataMode === "firebase"
+                ? "Versão 0.1 · Dados sincronizados com o Firebase. Acesso exclusivo do administrador nesta etapa."
+                : "Versão 0.1 · Dados demonstrativos locais. O controle de perfil não oferece segurança real e não há sincronização entre aparelhos."}
             </div>
           </section>
         ) : (

@@ -1,28 +1,11 @@
-# Autenticação e recuperação: preparação para Firebase
+# Autenticação e autorização
 
-## Estado da versão 0.1
+No modo `firebase`, o administrador entra com e-mail/senha pelo Firebase Authentication. Provisione sua conta fora da interface e crie `/administrators/{uid}` com `role: "admin"`, `active: true` e `email` igual ao e-mail da conta em minúsculas. O aplicativo não permite criar ou elevar esse vínculo. A recuperação por e-mail está disponível somente para o administrador.
 
-O administrador cadastra e-mail e senha demonstrativa no primeiro acesso deste navegador. A senha é comparada localmente com derivação PBKDF2 e sal aleatório; não é gravada em texto puro. O acesso continua demonstrativo: dados e controle de perfil estão no navegador e não constituem autorização no servidor. Use somente senha fictícia.
+Os documentos operacionais ficam em `/instances/{identificador}/data/{colecao}/items/{id}`. A marca pública em `/publicBranding/{identificador}` permite leitura individual apenas de nome, logo e aparência. Antes do deploy, personalize os caminhos fixos `demo` de `firestore.rules` para o identificador da instalação. As coleções privadas de credenciais e sessões do profissional continuam negadas ao SDK, inclusive ao administrador.
 
-A credencial persiste ao sair do perfil ou fechar o navegador. Outra origem (localhost versus 127.0.0.1), outro navegador, aparelho ou limpeza do armazenamento não compartilha esse cadastro. Não existe senha inicial embutida no código. A recuperação da senha local não está implementada e o botão não afirma que enviou e-mail.
+Profissionais entram por usuário/senha através do Worker exclusivo da instalação, sem e-mail ou recuperação na interface. A senha é verificada pelo Firebase Authentication do lado do servidor; nunca é armazenada em texto no Firestore. O Worker valida sessão, profissional ativo, revisão e propriedade do atendimento em cada operação. Somente o administrador cria/redefine/suspende acessos.
 
-## Integração prevista
+O profissional pode consultar contatos básicos ativos do estabelecimento para agendar, cadastrar nome/telefone sem alterar consentimento, documentos ou histórico, e criar atendimentos exclusivamente para si. A própria agenda, jornada e resultados são os únicos retornados. Edição/exclusão de clientes, catálogo, jornada, repasses e credenciais permanecem administrativos.
 
-Usar **Firebase Authentication** para identidade, senha e recuperação por e-mail. Firestore pode armazenar estabelecimento, vínculo do usuário e dados do sistema; não deve armazenar senhas nem links/tokens de recuperação.
-
-O contrato `AdminAuthService` em `src/adminAccess.ts` delimita login, recuperação e saída. Ele ainda não tem implementação Firebase. Não há SDK conectado, credenciais de projeto ou chamada de rede nesta etapa.
-
-Para conectar de verdade:
-
-1. Definir o projeto Firebase e habilitar o provedor e-mail/senha, os domínios autorizados e o modelo de e-mail de recuperação.
-2. Provisionar o administrador de maneira controlada; impedir cadastro público que conceda esse papel. O servidor deve associar a conta ao estabelecimento e validar sua função.
-3. Implementar o serviço de autenticação e validar a sessão e o papel no servidor/regras dos dados. O controle local de telas não é proteção suficiente.
-4. Implementar recuperação exclusiva de administrador com validação no backend, limitação de tentativas e resposta que não revele se um e-mail existe. Ocultar o link de recuperação do profissional na interface, por si só, não restringe a API do provedor.
-5. Os profissionais não terão recuperação autônoma pelo aplicativo. A redefinição será feita pelo administrador, com autorização verificada no backend. A exclusividade da recuperação deve ser testada também contra chamadas diretas à API.
-6. Testar com Firebase Emulator Suite antes de ativar um ambiente real, incluindo senha inválida, conta sem papel administrativo, recuperação, sessão expirada e isolamento entre estabelecimentos.
-
-Nenhuma publicação ou criação de conta externa foi realizada. Variáveis de ambiente e chaves privadas não devem ser incluídas no repositório. SDK/Admin SDK e contas de serviço só serão configurados ao conectar o projeto.
-
-Referências oficiais:
-- https://firebase.google.com/docs/auth/web/password-auth
-- https://firebase.google.com/docs/auth/web/manage-users#send_a_password_reset_email
+Os testes de regras/persistência e backend verificam autorização, revogação, adulteração, restrição de agenda e campos, revisões e gravação emulada. A demonstração local não fornece essas garantias.

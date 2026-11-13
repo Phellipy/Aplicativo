@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import { useEffect, useRef, useState } from "react";
 import {
   Search,
@@ -41,7 +42,9 @@ export default function ClientsPanel({
     [excluded, setExcluded] = useState(false),
     [deleting, setDeleting] = useState<Client | null>(null),
     [error, setError] = useState("");
-  const [returnFilter, setReturnFilter] = useState("all");
+  const [returnFilter, setReturnFilter] = useState("all"),
+    [page, setPage] = useState(0);
+  useEffect(() => setPage(0), [query, excluded, returnFilter]);
   const eligibleIds = new Set(
     eligibleClients(clients, campaigns, TODAY, returnDays).map(
       (client) => client.id,
@@ -71,6 +74,8 @@ export default function ClientsPanel({
         .toLocaleLowerCase("pt-BR")
         .includes(query.toLocaleLowerCase("pt-BR")),
   );
+  const pageCount = Math.max(1, Math.ceil(visible.length / 100));
+  const currentPage = Math.min(page, pageCount - 1);
   const openings = campaigns.filter((campaign) => campaign.status === "opened");
   const pending = deleting
     ? appointments.filter(
@@ -120,100 +125,130 @@ export default function ClientsPanel({
       </div>
       <p className="return-filter-note">
         Prazo configurado: {returnDays} dias sem atendimento · referência
-        demonstrativa {TODAY.split("-").reverse().join("/")}. “Pode convidar
-        agora” exige autorização e ausência de lembrete aberto nos últimos 7
-        dias. O contador registra aberturas, não confirma envio.
+        {instance.dataMode === "firebase" ? "atual" : "demonstrativa"}{" "}
+        {TODAY.split("-").reverse().join("/")}. “Pode convidar agora” exige
+        autorização e ausência de lembrete aberto nos últimos 7 dias. O contador
+        registra aberturas, não confirma envio.
       </p>
       <section className="panel client-list">
-        {visible.map((client) => {
-          const stats = returnReminderStats(client, campaigns),
-            overdue = daysSinceVisit(client) >= returnDays;
-          return (
-            <div className="client-row" key={client.id}>
-              <span className="avatar">
-                {client.name
-                  .split(" ")
-                  .slice(0, 2)
-                  .map((part) => part[0])
-                  .join("")}
-              </span>
-              <div className="client-info">
-                <strong>{client.name}</strong>
-                <small>
-                  {client.phone} · Última visita:{" "}
-                  {client.lastVisit.split("-").reverse().join("/")}
-                </small>
-                {!client.deletedAt && (
-                  <div className="return-client-indicators">
-                    {overdue && (
-                      <span className="return-overdue">
-                        Sem retorno · {daysSinceVisit(client)} dias
+        {visible
+          .slice(currentPage * 100, (currentPage + 1) * 100)
+          .map((client) => {
+            const stats = returnReminderStats(client, campaigns),
+              overdue = daysSinceVisit(client) >= returnDays;
+            return (
+              <div className="client-row" key={client.id}>
+                <span className="avatar">
+                  {client.name
+                    .split(" ")
+                    .slice(0, 2)
+                    .map((part) => part[0])
+                    .join("")}
+                </span>
+                <div className="client-info">
+                  <strong>{client.name}</strong>
+                  <small>
+                    {client.phone} · Última visita:{" "}
+                    {client.lastVisit
+                      ? client.lastVisit.split("-").reverse().join("/")
+                      : "Sem atendimento registrado"}
+                  </small>
+                  {!client.deletedAt && (
+                    <div className="return-client-indicators">
+                      {overdue && (
+                        <span className="return-overdue">
+                          Sem retorno · {daysSinceVisit(client)} dias
+                        </span>
+                      )}
+                      {!client.consent && (
+                        <small>Sem autorização para mensagens</small>
+                      )}
+                      <span
+                        className={`return-count ${stats.warning ? "is-warning" : ""}`}
+                      >
+                        {stats.count} lembrete(s) aberto(s) neste ciclo
+                        {stats.warning
+                          ? " · Atenção à frequência de contato"
+                          : ""}
                       </span>
-                    )}
-                    {!client.consent && (
-                      <small>Sem autorização para mensagens</small>
-                    )}
-                    <span
-                      className={`return-count ${stats.warning ? "is-warning" : ""}`}
-                    >
-                      {stats.count} lembrete(s) aberto(s) neste ciclo
-                      {stats.warning
-                        ? " · Atenção à frequência de contato"
-                        : ""}
-                    </span>
-                    <small>
-                      Última abertura:{" "}
-                      {stats.lastOpenedAt
-                        ? new Date(stats.lastOpenedAt).toLocaleString("pt-BR", {
-                            timeZone: "America/Sao_Paulo",
-                          })
-                        : "Nenhuma neste ciclo"}
-                    </small>
-                  </div>
-                )}
-              </div>
-              <div className="client-actions">
-                {excluded ? (
-                  <button
-                    className="secondary"
-                    onClick={() => onRestore(client.id)}
-                  >
-                    <RotateCcw size={15} />
-                    Restaurar
-                  </button>
-                ) : (
-                  <>
+                      <small>
+                        Última abertura:{" "}
+                        {stats.lastOpenedAt
+                          ? new Date(stats.lastOpenedAt).toLocaleString(
+                              "pt-BR",
+                              {
+                                timeZone: "America/Sao_Paulo",
+                              },
+                            )
+                          : "Nenhuma neste ciclo"}
+                      </small>
+                    </div>
+                  )}
+                </div>
+                <div className="client-actions">
+                  {excluded ? (
                     <button
                       className="secondary"
-                      aria-label={`Editar ${client.name}`}
-                      onClick={() => onEdit(client)}
+                      onClick={() => onRestore(client.id)}
                     >
-                      <Pencil size={15} />
-                      Editar
+                      <RotateCcw size={15} />
+                      Restaurar
                     </button>
-                    <button
-                      className="secondary whatsapp-button"
-                      aria-label={`WhatsApp de ${client.name}`}
-                      disabled={!client.consent}
-                      onClick={() => onWhatsApp(client)}
-                    >
-                      <MessageSquare size={15} />
-                      WhatsApp
-                    </button>
-                    <button
-                      className="secondary danger-button"
-                      aria-label={`Excluir ${client.name}`}
-                      onClick={() => setDeleting(client)}
-                    >
-                      <Trash2 size={15} />
-                      Excluir
-                    </button>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <button
+                        className="secondary"
+                        aria-label={`Editar ${client.name}`}
+                        onClick={() => onEdit(client)}
+                      >
+                        <Pencil size={15} />
+                        Editar
+                      </button>
+                      <button
+                        className="secondary whatsapp-button"
+                        aria-label={`WhatsApp de ${client.name}`}
+                        disabled={!client.consent}
+                        onClick={() => onWhatsApp(client)}
+                      >
+                        <MessageSquare size={15} />
+                        WhatsApp
+                      </button>
+                      <button
+                        className="secondary danger-button"
+                        aria-label={`Excluir ${client.name}`}
+                        onClick={() => setDeleting(client)}
+                      >
+                        <Trash2 size={15} />
+                        Excluir
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        {pageCount > 1 && (
+          <div className="modal-actions client-pagination">
+            <button
+              className="secondary"
+              disabled={currentPage === 0}
+              onClick={() => setPage(currentPage - 1)}
+            >
+              Anterior
+            </button>
+            <span>
+              {visible.length} clientes · Página {currentPage + 1} de{" "}
+              {pageCount}
+            </span>
+            <button
+              className="secondary"
+              disabled={currentPage + 1 >= pageCount}
+              onClick={() => setPage(currentPage + 1)}
+            >
+              Próxima
+            </button>
+          </div>
+        )}
         {!visible.length && (
           <div className="empty">
             {excluded

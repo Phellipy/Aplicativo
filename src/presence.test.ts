@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   controlPresence,
+  establishmentPresent,
   professionalPresent,
   ESTABLISHMENT,
   isPresent,
@@ -67,12 +68,12 @@ describe("controle de presença", () => {
       [960, 1080],
     ]);
   });
-  it("mantém fechado na virada do dia e retoma somente na reabertura", () => {
+  it("retoma a jornada no novo dia sem carregar o fechamento anterior", () => {
     const events = [
       event(ESTABLISHMENT, "16:00", false, "2026-11-11"),
       event(ESTABLISHMENT, "10:00", true),
     ];
-    expect(available(events).intervals).toEqual([[600, 1080]]);
+    expect(available(events).intervals).toEqual([[540, 1080]]);
   });
   it("preserva dias anteriores ao controle e não projeta presença futura", () => {
     const events = [event(ESTABLISHMENT, "16:00", false)];
@@ -355,5 +356,80 @@ describe("profissional único e presença em dia de folga", () => {
         reference,
       ).availableMinutes,
     ).toBe(0);
+  });
+});
+
+describe("presença automática pela jornada de São Paulo", () => {
+  const schedule = defaultSchedule(professional);
+  const presentAt = (time: string, events: PresenceEvent[] = []) =>
+    professionalPresent(
+      events,
+      professional,
+      new Date(at(time)).toISOString(),
+      schedule,
+    );
+  it("inicia ausente antes das 9h, presente das 9h às 18h e ausente no término", () => {
+    expect(presentAt("08:59")).toBe(false);
+    expect(presentAt("09:00")).toBe(true);
+    expect(presentAt("17:59")).toBe(true);
+    expect(presentAt("18:00")).toBe(false);
+    expect(presentAt("23:00")).toBe(false);
+  });
+  it("não carrega entrada ou saída do dia anterior", () => {
+    for (const open of [true, false]) {
+      const events = [event(professional, "10:00", open, "2026-11-11")];
+      expect(presentAt("08:00", events)).toBe(false);
+      expect(presentAt("10:00", events)).toBe(true);
+    }
+  });
+  it("preserva saída manual no mesmo dia e encerra chegada regular no fim do expediente", () => {
+    const events = [
+      event(professional, "10:00", false),
+      event(professional, "11:00", true),
+    ];
+    expect(presentAt("10:30", events)).toBe(false);
+    expect(presentAt("12:00", events)).toBe(true);
+    expect(presentAt("18:00", events)).toBe(false);
+  });
+  it("fica ausente durante restrição e retorna à jornada ao terminar", () => {
+    const blocked = {
+      ...schedule,
+      restrictions: [
+        {
+          id: 1,
+          date: day,
+          allDay: false,
+          start: "12:00",
+          end: "13:00",
+          reason: "Ausência",
+        },
+      ],
+    };
+    expect(professionalPresent([], professional, at("12:30"), blocked)).toBe(
+      false,
+    );
+    expect(professionalPresent([], professional, at("13:00"), blocked)).toBe(
+      true,
+    );
+    expect(
+      professionalPresent([], professional, at("13:00"), {
+        ...blocked,
+        restrictions: [{ ...blocked.restrictions[0], allDay: true }],
+      }),
+    ).toBe(false);
+  });
+  it("considera a jornada ao abrir o estabelecimento e ignora fechamento de ontem", () => {
+    const events = [event(ESTABLISHMENT, "16:00", false, "2026-11-11")];
+    expect(establishmentPresent(events, at("08:00"), [schedule])).toBe(false);
+    expect(establishmentPresent(events, at("10:00"), [schedule])).toBe(true);
+    expect(establishmentPresent(events, at("18:00"), [schedule])).toBe(false);
+    const next = controlPresence(
+      events,
+      professional,
+      new Date(at("10:00")).toISOString(),
+      [schedule],
+      professional,
+    );
+    expect(next.slice(-2).every((e) => !e.open)).toBe(true);
   });
 });

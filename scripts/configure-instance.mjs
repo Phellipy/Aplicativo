@@ -41,7 +41,7 @@ try {
     "Configuração local criada: .env.local e .firebaserc. Nenhuma conta, domínio ou recurso externo foi alterado.",
   );
   console.log(
-    "A v0.1 continua demonstrativa/local. Preencher a configuração não conecta autenticação, banco ou recuperação de senha.",
+    "A instância inicia em demonstração local. Para usar dados reais, configure Authentication, Firestore, regras, administrador e VITE_DATA_MODE=firebase. O acesso profissional requer Worker próprio.",
   );
 } catch (error) {
   console.error(error.message);

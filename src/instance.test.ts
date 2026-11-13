@@ -11,9 +11,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 describe("base reutilizável por cliente", () => {
-  it("mantém a instância demonstrativa e seus dados existentes", () => {
+  it("usa a identidade genérica e mantém compatibilidade com chaves demo", () => {
     expect(readInstance({}).id).toBe("demo");
-    expect(readInstance({}).name).toBe("Navalha & Co.");
+    expect(readInstance({}).name).toBe("Meu estabelecimento");
     expect(instanceStorageKey("navalha-v01-clients", "demo")).toBe(
       "navalha-v01-clients",
     );

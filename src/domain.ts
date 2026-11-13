@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import type { DemoCredential } from "./demoAccess";
 export type Role = "admin" | "professional";
 export const paymentMethods = [
@@ -84,7 +85,30 @@ export type Campaign = {
   openedAt?: string;
   cycleResetAt?: string;
 };
-export const TODAY = "2026-11-11";
+export function businessDate(now = new Date()) {
+  const values = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", {
+      timeZone: "America/Sao_Paulo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    })
+      .formatToParts(now)
+      .map((part) => [part.type, part.value]),
+  );
+  return `${values.year}-${values.month}-${values.day}`;
+}
+export function businessDateLabel(now = new Date()) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(now);
+}
+export const TODAY =
+  instance.dataMode === "firebase" ? businessDate() : "2026-11-11";
 export const professionals = ["Rafael Moura", "Diego Alves", "Lucas Pires"];
 export const initialClients: Client[] = [
   {
@@ -710,6 +734,12 @@ export function timelineLayout(
   return placed;
 }
 
+export function appointmentsInAgenda(appointments: Appointment[]) {
+  return appointments.filter(
+    (appointment) => appointment.status !== "Cancelado",
+  );
+}
+
 export type Period = "day" | "week" | "month" | "year";
 export function filterPeriod(
   appointments: Appointment[],
@@ -818,13 +848,37 @@ export const cleanProcedure = (procedure: Procedure): Procedure => ({
   duration: procedure.duration,
   price: procedure.price,
 });
+export function professionalServices(
+  record: ProfessionalRecord,
+  procedures: Procedure[],
+  singleProfessional: boolean,
+): ProfessionalRecord["services"] {
+  return procedures.map((procedure) => {
+    const saved = record.services.find((s) => s.procedureId === procedure.id);
+    return {
+      procedureId: procedure.id,
+      enabled: singleProfessional || (saved?.enabled ?? false),
+      commissionRate: saved?.commissionRate ?? 100,
+    };
+  });
+}
+
 export function assignedProcedures(
   procedures: Procedure[],
   records: ProfessionalRecord[],
 ): Procedure[] {
+  const active = records.filter((record) => record.active && !record.deletedAt);
+  const effective = records.map((record) => ({
+    ...record,
+    services: professionalServices(
+      record,
+      procedures,
+      active.length === 1 && active[0].id === record.id,
+    ),
+  }));
   return procedures.map((procedure) => ({
     ...cleanProcedure(procedure),
-    professionals: records
+    professionals: effective
       .filter(
         (record) =>
           record.active &&
@@ -835,10 +889,10 @@ export function assignedProcedures(
       )
       .map((record) => record.name),
     individualRates: Object.fromEntries(
-      records.map((record) => [
+      effective.map((record) => [
         record.name,
         record.services.find((s) => s.procedureId === procedure.id)
-          ?.commissionRate ?? 0,
+          ?.commissionRate ?? 100,
       ]),
     ),
   }));
@@ -949,7 +1003,11 @@ export function saveClient(
     throw new Error("Somente o administrador altera clientes.");
   const name = updated.name.trim(),
     phone = updated.phone.trim();
-  if (!name || !phone || !validDate(updated.lastVisit))
+  if (
+    !name ||
+    !phone ||
+    (updated.lastVisit !== "" && !validDate(updated.lastVisit))
+  )
     throw new Error("Informe nome, telefone e data válidos.");
   if (
     clients.some(

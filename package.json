@@ -1,25 +1,31 @@
 {
-  "name": "studio-gestao",
+  "name": "aplicativo-gestao",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/build-user-manual.mjs && tsc -b && tsc -p access-backend/tsconfig.json && vite build",
     "test": "vitest run",
-    "instance:init": "node scripts/configure-instance.mjs"
+    "instance:init": "node scripts/configure-instance.mjs",
+    "test:rules": "vitest run --config vitest.rules.config.ts",
+    "check:backend": "tsc -p access-backend/tsconfig.json",
+    "test:backend": "vitest run access-backend/src"
   },
   "dependencies": {
     "exceljs": "^4.4.0",
+    "firebase": "^13.3.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0",
     "@types/node": "^22.20.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "firebase-admin": "^14.5.1",
     "typescript": "~5.7.2",
     "vite": "^6.0.5",
     "vitest": "^4.1.12"
@@ -31,6 +37,7 @@
   "overrides": {
     "exceljs": {
       "uuid": "^11.1.1"
-    }
+    },
+    "@grpc/grpc-js": "^1.14.7"
   }
 }

@@ -1,3 +1,5 @@
+import { useCloudSession, useRemoteStored } from "./CloudContext";
+import { cloudKeys, cloudKey } from "./cloudModel";
 import { instance, storageKey } from "./instance";
 import AdminLogin from "./AdminLogin";
 import type { DemoAdminAccount } from "./adminAccess";
@@ -25,11 +27,15 @@ import AgendaStack from "./AgendaStack";
 import MetricsPage from "./MetricsPage";
 import { occupationStats, hours, formatPercentage } from "./metrics";
 import ClientsPanel from "./ClientsPanel";
+import ContactImport from "./ContactImportDialog";
+import { importContactBatches } from "./contactImport";
 import ProfessionalsPanel from "./ProfessionalsPanel";
 import { verifyDemoCredential } from "./demoAccess";
 import PeriodControls from "./PeriodControls";
 import AgendaPeriod from "./AgendaPeriod";
 import AppointmentFields, { RescheduleFields } from "./AppointmentFields";
+import ProcedureDurationFields from "./ProcedureDurationFields";
+import { validProcedureDuration } from "./procedureDuration";
 import WorkScheduleEditor from "./WorkScheduleEditor";
 import { useEffect, useRef, useState, useMemo, type FormEvent } from "react";
 import {
@@ -59,6 +65,7 @@ import {
 } from "lucide-react";
 import {
   filterPeriod,
+  appointmentsInAgenda,
   periodLabel,
   type Period,
   initialWorkSchedules,
@@ -80,6 +87,7 @@ import {
   professionals as demoProfessionals,
   initialProfessionalRecords,
   assignedProcedures,
+  professionalServices,
   cleanProcedure,
   createProfessional,
   updateProfessional,
@@ -87,6 +95,7 @@ import {
   defaultSchedule,
   type ProfessionalRecord,
   TODAY,
+  businessDateLabel,
   money,
   procedureRate,
   calculateCommission,
@@ -129,6 +138,8 @@ function useStored<T>(
   initial: T,
   normalize: (value: T) => T = (value) => value,
 ) {
+  if (instance.dataMode === "firebase" && cloudKeys[cloudKey(key)])
+    return useRemoteStored(key, initial, normalize);
   const [value, setValue] = useState<T>(() => {
     try {
       const v = localStorage.getItem(storageKey(key));
@@ -164,6 +175,8 @@ function Badge({ text }: { text: string }) {
   );
 }
 export default function App() {
+  const cloudSession = useCloudSession();
+  const isCloud = instance.dataMode === "firebase";
   const [establishmentName, setEstablishmentName] = useStored(
     "navalha-v01-establishment-name",
     instance.name,
@@ -196,11 +209,15 @@ export default function App() {
     new Date().toISOString(),
   );
   useEffect(() => {
-    const timer = window.setInterval(
-      () => setPresenceNow(new Date().toISOString()),
-      30000,
-    );
-    return () => window.clearInterval(timer);
+    const refreshPresence = () => setPresenceNow(new Date().toISOString());
+    const timer = window.setInterval(refreshPresence, 30000);
+    window.addEventListener("focus", refreshPresence);
+    document.addEventListener("visibilitychange", refreshPresence);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener("focus", refreshPresence);
+      document.removeEventListener("visibilitychange", refreshPresence);
+    };
   }, []);
   const [appearance, setAppearance] = useStored<Appearance>(
     "navalha-v01-appearance",
@@ -224,7 +241,7 @@ export default function App() {
     "navalha-v01-admin-account",
     null,
   );
-  const [role, setRole] = useState<Role | null>(null),
+  const [role, setRole] = useState<Role | null>(cloudSession ? "admin" : null),
     [page, setPage] = useState<Page>("Dashboard"),
     [mobile, setMobile] = useState(false);
   const [appointments, setAppointments] = useStored<Appointment[]>(
@@ -307,7 +324,7 @@ export default function App() {
       setPage("Dashboard");
       setRole("professional");
     } catch {
-      setLoginError("A verificação local não está disponível neste navegador.");
+      setLoginError("A verificação local não está disponível.");
     } finally {
       setLoginBusy(false);
     }
@@ -369,6 +386,14 @@ export default function App() {
       (p) =>
         admin || !["Clientes", "Profissionais", "Métricas"].includes(p.name),
     );
+  const activeProfessionalKey = activeProfessionals.join("\u0000");
+  useEffect(() => {
+    if (
+      activeProfessionals.length <= 1 ||
+      !activeProfessionals.includes(person)
+    )
+      setPerson("Todos");
+  }, [activeProfessionalKey, person]);
   const visible = visibleAppointments(
     appointments,
     role || "professional",
@@ -403,7 +428,8 @@ export default function App() {
     page === "Dashboard" ? dashboardPeriod : "day",
     page === "Dashboard" ? dashboardDate : TODAY,
   );
-  const agendaItems = filterPeriod(scoped, agendaPeriod, date);
+  const agendaVisible = appointmentsInAgenda(scoped);
+  const agendaItems = filterPeriod(agendaVisible, agendaPeriod, date);
   const occupancy = useMemo(
     () =>
       occupationStats(
@@ -528,13 +554,13 @@ export default function App() {
       };
       if (
         !updated.name ||
-        updated.duration < 15 ||
-        updated.duration > 480 ||
-        updated.duration % 15 !== 0 ||
+        !validProcedureDuration(updated.duration) ||
         updated.price < 0 ||
         !Number.isFinite(updated.price)
       ) {
-        setFormError("Informe nome, valor e duração válidos.");
+        setFormError(
+          "Informe nome, valor e duração de 1 a 540 minutos (9 horas). Use minutos inteiros.",
+        );
         return;
       }
       if (editingProcedure) {
@@ -601,9 +627,7 @@ export default function App() {
           })),
         ]);
         close();
-        setToast(
-          `${created.length} atendimento(s) agendado(s) neste navegador.`,
-        );
+        setToast(`${created.length} atendimento(s) agendado(s).`);
         return;
       } catch (error) {
         setFormError((error as Error).message);
@@ -611,7 +635,7 @@ export default function App() {
       }
     }
     close();
-    setToast("Cadastro salvo neste navegador.");
+    setToast("Cadastro salvo.");
   }
   function updateStatus(a: Appointment, status: string) {
     setAppointments((items) =>
@@ -991,8 +1015,13 @@ export default function App() {
         </nav>
         <div className="sidebar-bottom">
           <div className="demo-note">
-            <span className="live-dot" /> Ambiente de demonstração
-            <small>Dados fictícios · versão 0.1</small>
+            <span className="live-dot" />{" "}
+            {isCloud ? "Ambiente conectado" : "Ambiente de demonstração"}
+            <small>
+              {isCloud
+                ? "Firebase · versão 0.1"
+                : "Dados fictícios · versão 0.1"}
+            </small>
           </div>
           <div className="account">
             <Avatar name={admin ? "Administrador" : currentProfessional} />
@@ -1000,7 +1029,9 @@ export default function App() {
               <strong>{admin ? "Administrador" : currentProfessional}</strong>
               <small>
                 {admin
-                  ? "Acesso demonstrativo completo"
+                  ? isCloud
+                    ? "Acesso administrativo"
+                    : "Acesso demonstrativo completo"
                   : "Perfil profissional · demonstração"}
               </small>
             </div>
@@ -1008,6 +1039,14 @@ export default function App() {
               className="icon"
               aria-label="Sair"
               onClick={() => {
+                if (cloudSession) {
+                  void cloudSession
+                    .logout()
+                    .catch(() =>
+                      setToast("Não foi possível sair. Tente novamente."),
+                    );
+                  return;
+                }
                 setRole(null);
                 setPerson("Todos");
                 setPage("Dashboard");
@@ -1064,16 +1103,18 @@ export default function App() {
                 );
                 setPresenceNow(now);
                 setToast(
-                  "Presença registrada no horário atual de São Paulo. Métrica de ocupação atualizada neste navegador.",
+                  "Presença registrada no horário atual de São Paulo. Métrica de ocupação atualizada.",
                 );
               }}
             />
             <button
               className="icon"
-              aria-label="Ver alertas de demonstração"
+              aria-label="Ver informações do ambiente"
               onClick={() =>
                 setToast(
-                  "Os alertas exibidos usam apenas dados demonstrativos.",
+                  isCloud
+                    ? "Dados armazenados no Firebase. Publicação inicial com acesso exclusivo do administrador."
+                    : "Os alertas exibidos usam apenas dados demonstrativos.",
                 )
               }
             >
@@ -1086,15 +1127,12 @@ export default function App() {
           <div className="page-head">
             <div>
               <div className="date-line">
-                QUARTA-FEIRA, 11 DE NOVEMBRO DE 2026 · DATA DEMO
+                {isCloud
+                  ? businessDateLabel(new Date(presenceNow))
+                  : "Quarta-feira, 11 de novembro de 2026"}{" "}
+                · {isCloud ? "HOJE" : "DATA DEMO"}
               </div>
-              <h1>
-                {page === "Dashboard"
-                  ? admin
-                    ? "Seu negócio, em dia."
-                    : `Bom dia, ${currentProfessional.split(" ")[0]}.`
-                  : page}
-              </h1>
+              <h1>{page === "Dashboard" ? establishmentName : page}</h1>
               <p>
                 {
                   {
@@ -1149,20 +1187,22 @@ export default function App() {
                   onPeriod={setDashboardPeriod}
                   onDate={setDashboardDate}
                 />
-                {admin && (
+                {admin && activeProfessionals.length > 1 && (
                   <select
                     aria-label="Filtrar resultados por profissional"
                     value={person}
                     onChange={(e) => setPerson(e.target.value)}
                   >
                     <option value="Todos">Estabelecimento consolidado</option>
-                    {professionals.map((p) => (
+                    {activeProfessionals.map((p) => (
                       <option key={p}>{p}</option>
                     ))}
                   </select>
                 )}
               </div>
-              <div className="stats">
+              <div
+                className={`stats ${activeProfessionals.length === 1 ? "stats-single" : ""}`}
+              >
                 {[
                   {
                     label: admin
@@ -1184,6 +1224,7 @@ export default function App() {
                       : "Meus ganhos previstos",
                     value: money(today.reduce((s, a) => s + commission(a), 0)),
                     note: "Sobre a agenda do período",
+                    hidden: admin && activeProfessionals.length === 1,
                     icon: UserRound,
                   },
                   {
@@ -1192,16 +1233,18 @@ export default function App() {
                     note: `${hours(occupancy.occupiedMinutes)} atendidas / ${hours(occupancy.availableMinutes)} disponíveis`,
                     icon: Clock,
                   },
-                ].map((s, i) => (
-                  <div className={`stat stat-${i}`} key={s.label}>
-                    <div>
-                      <span>{s.label}</span>
-                      <s.icon size={18} />
+                ]
+                  .filter((s) => !("hidden" in s && s.hidden))
+                  .map((s, i) => (
+                    <div className={`stat stat-${i}`} key={s.label}>
+                      <div>
+                        <span>{s.label}</span>
+                        <s.icon size={18} />
+                      </div>
+                      <strong>{s.value}</strong>
+                      <small>{s.note}</small>
                     </div>
-                    <strong>{s.value}</strong>
-                    <small>{s.note}</small>
-                  </div>
-                ))}
+                  ))}
               </div>
               <p className="occupancy-caption">
                 Serviços concluídos ÷ tempo disponível, respeitando jornada,
@@ -1341,12 +1384,14 @@ export default function App() {
                       {money(today.reduce((s, a) => s + a.value, 0))}
                     </strong>
                   </div>
-                  <div>
-                    <span>Repasses previstos</span>
-                    <strong>
-                      {money(today.reduce((s, a) => s + commission(a), 0))}
-                    </strong>
-                  </div>
+                  {activeProfessionals.length !== 1 && (
+                    <div>
+                      <span>Repasses previstos</span>
+                      <strong>
+                        {money(today.reduce((s, a) => s + commission(a), 0))}
+                      </strong>
+                    </div>
+                  )}
                   <div className="summary-total">
                     <span>
                       {admin
@@ -1438,7 +1483,7 @@ export default function App() {
                   </div>
                 ) : agendaView === "stack" && agendaPeriod !== "day" ? (
                   <AgendaPeriod
-                    appointments={scoped}
+                    appointments={agendaVisible}
                     period={agendaPeriod}
                     date={date}
                     onOpen={(value, period) => {
@@ -1457,7 +1502,6 @@ export default function App() {
                         "Agendado",
                         "Confirmado",
                         "Concluído",
-                        "Cancelado",
                         "Não compareceu",
                       ].map((status) => (
                         <span
@@ -1474,7 +1518,7 @@ export default function App() {
                       locais.
                     </p>
                     <AgendaStack
-                      appointments={scoped.filter((a) => a.date === date)}
+                      appointments={agendaItems}
                       allAppointments={appointments}
                       procedures={procedures}
                       schedules={workingSchedules}
@@ -1525,6 +1569,42 @@ export default function App() {
                 </div>
                 <span className="badge blue">Envio manual</span>
               </section>
+              {admin && (
+                <ContactImport
+                  clients={clients}
+                  onImport={async (contacts, onProgress) => {
+                    if (cloudSession) await cloudSession.store.waitForIdle();
+                    let local = clients;
+                    const count = await importContactBatches(
+                      contacts,
+                      () =>
+                        cloudSession
+                          ? ((cloudSession.store.values.get(
+                              "clients",
+                            ) as Client[]) ?? [])
+                          : local,
+                      async (added) => {
+                        if (cloudSession) {
+                          const latest =
+                            (cloudSession.store.values.get(
+                              "clients",
+                            ) as Client[]) ?? [];
+                          cloudSession.store.change("clients", [
+                            ...latest,
+                            ...added,
+                          ]);
+                          await cloudSession.store.waitForIdle();
+                        } else {
+                          local = [...local, ...added];
+                          setClients(local);
+                        }
+                      },
+                      onProgress,
+                    );
+                    setToast(`${count} cliente(s) importado(s).`);
+                  }}
+                />
+              )}
               <ClientsPanel
                 clients={clients}
                 appointments={appointments}
@@ -1567,6 +1647,7 @@ export default function App() {
               procedures={procedures}
               schedules={workingSchedules}
               names={professionals}
+              activeNames={activeProfessionals}
               presence={presence}
               now={presenceNow}
               establishmentName={establishmentName}
@@ -1585,7 +1666,23 @@ export default function App() {
                   Date.now(),
                   role!,
                 );
-                setRecords((items) => [...items, created]);
+                setRecords((items) => [
+                  ...items.map((record) =>
+                    activeProfessionals.length === 1 &&
+                    record.active &&
+                    !record.deletedAt
+                      ? {
+                          ...record,
+                          services: professionalServices(
+                            record,
+                            procedures,
+                            true,
+                          ),
+                        }
+                      : record,
+                  ),
+                  created,
+                ]);
                 setSchedules((items) => [
                   ...items,
                   defaultSchedule(created.name),
@@ -1596,7 +1693,7 @@ export default function App() {
               }}
               onUpdate={(updated) => {
                 setRecords(updateProfessional(records, updated, role!));
-                setToast("Configuração do profissional salva neste navegador.");
+                setToast("Configuração do profissional salva.");
               }}
               onDelete={(id) => {
                 setRecords(deleteProfessional(records, id, role!));
@@ -1693,7 +1790,7 @@ export default function App() {
               returnDays={returnDays}
               onReturnDays={(value) => {
                 setReturnDays(normalizeReturnDays(value));
-                setToast("Prazo de retorno salvo neste navegador.");
+                setToast("Prazo de retorno salvo.");
               }}
               message={message}
               appointmentTemplate={appointmentTemplate}
@@ -1701,39 +1798,43 @@ export default function App() {
               logo={logo}
               onLogo={(value) => {
                 try {
-                  localStorage.setItem(
-                    storageKey("navalha-v01-logo"),
-                    JSON.stringify(value),
-                  );
+                  if (!isCloud)
+                    localStorage.setItem(
+                      storageKey("navalha-v01-logo"),
+                      JSON.stringify(value),
+                    );
                 } catch {
                   throw new Error(
                     "Sem espaço neste navegador para salvar a logo. Tente uma imagem menor.",
                   );
                 }
                 setLogo(value);
-                setToast(
-                  value ? "Logo salva neste navegador." : "Logo removida.",
-                );
+                setToast(value ? "Logo salva." : "Logo removida.");
               }}
               onAppearance={setAppearance}
               onName={(value) => {
                 setEstablishmentName(value);
-                setToast("Nome do estabelecimento salvo neste navegador.");
+                setToast("Nome do estabelecimento salvo.");
               }}
               onReturn={(value) => {
                 setMessage(value);
-                setToast("Lembrete de retorno salvo neste navegador.");
+                setToast("Lembrete de retorno salvo.");
               }}
               onAppointment={(value) => {
                 setAppointmentTemplate(value);
-                setToast("Lembrete de agendamento salvo neste navegador.");
+                setToast("Lembrete de agendamento salvo.");
               }}
             />
           )}
           <footer>
+            <a href="/manual.html" target="_blank" rel="noopener noreferrer">
+              Manual do usuário
+            </a>
             {establishmentName} <span>Feito para cuidar do seu negócio.</span>
             <small>
-              v0.1 · Dados demonstrativos armazenados neste navegador
+              {isCloud
+                ? "v0.1 · Dados armazenados no Firebase"
+                : "v0.1 · Dados demonstrativos armazenados"}
             </small>
           </footer>
         </main>
@@ -1872,7 +1973,9 @@ export default function App() {
               ))}
             </div>
             <small>
-              Registro demonstrativo local. Nenhuma cobrança é processada.
+              {isCloud
+                ? "Registro manual no banco. Nenhuma cobrança é processada."
+                : "Registro demonstrativo local. Nenhuma cobrança é processada."}
             </small>
             <button className="text-button" onClick={close}>
               Cancelar e voltar à agenda
@@ -1994,7 +2097,7 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  Telefone demonstrativo
+                  {isCloud ? "Telefone com DDD" : "Telefone demonstrativo"}
                   <input
                     name="phone"
                     defaultValue={editingClient?.phone ?? ""}
@@ -2014,11 +2117,10 @@ export default function App() {
                   />
                 </label>
                 <label>
-                  Último atendimento
+                  Último atendimento (se houver)
                   <input
                     name="lastVisit"
                     type="date"
-                    required
                     max={TODAY}
                     defaultValue={editingClient?.lastVisit ?? TODAY}
                   />
@@ -2029,7 +2131,9 @@ export default function App() {
                     name="consent"
                     defaultChecked={editingClient?.consent ?? false}
                   />
-                  Autorizou receber lembretes (registro demonstrativo)
+                  {isCloud
+                    ? "Autorizou receber lembretes"
+                    : "Autorizou receber lembretes (registro demonstrativo)"}
                 </label>
               </>
             ) : (
@@ -2055,19 +2159,10 @@ export default function App() {
                       required
                     />
                   </label>
-                  <label>
-                    Duração (min)
-                    <input
-                      name="duration"
-                      defaultValue={editingProcedure?.duration}
-                      type="number"
-                      min="15"
-                      max="480"
-                      step="15"
-                      required
-                    />
-                  </label>
                 </div>
+                <ProcedureDurationFields
+                  initialMinutes={editingProcedure?.duration}
+                />
               </>
             )}
             {modal === "procedure" && editingProcedure && admin && (

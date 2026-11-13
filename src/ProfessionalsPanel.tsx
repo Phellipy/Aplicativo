@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Plus,
@@ -9,8 +10,10 @@ import {
 } from "lucide-react";
 import { createDemoCredential } from "./demoAccess";
 import WorkScheduleEditor from "./WorkScheduleEditor";
+import ProfessionalAccessSettings from "./ProfessionalAccessSettings";
 import {
   money,
+  professionalServices,
   type ProfessionalRecord,
   type Procedure,
   type WorkSchedule,
@@ -48,6 +51,8 @@ export default function ProfessionalsPanel({
     [deleteId, setDeleteId] = useState<number | null>(null);
   const dialog = useRef<HTMLDialogElement>(null),
     previousFocus = useRef<HTMLElement | null>(null);
+  const singleProfessional =
+    records.filter((p) => p.active && !p.deletedAt).length === 1;
   const record = records.find((p) => p.id === (deleteId ?? selected));
   useEffect(() => {
     setError("");
@@ -56,9 +61,18 @@ export default function ProfessionalsPanel({
     if (selected !== null || deleteId !== null) {
       previousFocus.current = document.activeElement as HTMLElement;
       setServices(
-        records
-          .find((p) => p.id === selected)
-          ?.services.map((s) => ({ ...s })) ?? [],
+        (() => {
+          const selectedRecord = records.find((p) => p.id === selected);
+          return selectedRecord
+            ? professionalServices(
+                selectedRecord,
+                procedures,
+                singleProfessional &&
+                  selectedRecord.active &&
+                  !selectedRecord.deletedAt,
+              )
+            : [];
+        })(),
       );
       dialog.current?.showModal();
     } else {
@@ -84,6 +98,12 @@ export default function ProfessionalsPanel({
   async function savePassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!record) return;
+    if (instance.dataMode === "firebase") {
+      setError(
+        "O acesso individual dos profissionais não está disponível nesta etapa.",
+      );
+      return;
+    }
     const form = event.currentTarget;
     const data = new FormData(form);
     const password = String(data.get("password") || "");
@@ -198,8 +218,8 @@ export default function ProfessionalsPanel({
         )}
       </section>
       <p className="availability-note">
-        Desabilitar bloqueia novos agendamentos e o acesso demonstrativo. O
-        histórico de atendimentos é preservado.
+        Desabilitar bloqueia novos agendamentos. O histórico de atendimentos é
+        preservado.
       </p>
       <dialog
         ref={dialog}
@@ -284,7 +304,8 @@ export default function ProfessionalsPanel({
             </label>
             <p className="availability-note">
               Após cadastrar, clique no nome para configurar jornada, serviços,
-              repasses e senha demonstrativa.
+              repasses. O acesso individual depende da etapa de autenticação
+              profissional.
             </p>
             <div className="modal-actions">
               <button className="secondary" type="button" onClick={close}>
@@ -342,47 +363,57 @@ export default function ProfessionalsPanel({
                         ? "Profissional habilitado"
                         : "Profissional desabilitado"}
                     </span>
-                    <p className="availability-note">
-                      Somente o administrador define ou altera a senha. Esta é
-                      uma demonstração local, sem autenticação segura no
-                      servidor. Use uma senha fictícia, diferente de suas senhas
-                      reais.
-                    </p>
-                    <p className="availability-note">
-                      {record.credential
-                        ? "Senha demonstrativa configurada."
-                        : "Nenhuma senha demonstrativa configurada."}
-                    </p>
-                    <form
-                      className="professional-access-form"
-                      onSubmit={savePassword}
-                    >
-                      <label>
-                        Nova senha de demonstração
-                        <input
-                          type="password"
-                          name="password"
-                          autoComplete="new-password"
-                          required
-                          minLength={6}
-                          maxLength={128}
-                        />
-                      </label>
-                      <label>
-                        Confirmar senha de demonstração
-                        <input
-                          type="password"
-                          name="confirmation"
-                          autoComplete="new-password"
-                          required
-                          minLength={6}
-                          maxLength={128}
-                        />
-                      </label>
-                      <button className="primary" disabled={busy}>
-                        {busy ? "Salvando…" : "Salvar senha demonstrativa"}
-                      </button>
-                    </form>
+                    {instance.dataMode === "firebase" ? (
+                      <ProfessionalAccessSettings
+                        id={record.id}
+                        active={record.active && !record.deletedAt}
+                      />
+                    ) : (
+                      <>
+                        {" "}
+                        <p className="availability-note">
+                          Somente o administrador define ou altera a senha. Esta
+                          é uma demonstração local, sem autenticação segura no
+                          servidor. Use uma senha fictícia, diferente de suas
+                          senhas reais.
+                        </p>
+                        <p className="availability-note">
+                          {record.credential
+                            ? "Senha demonstrativa configurada."
+                            : "Nenhuma senha demonstrativa configurada."}
+                        </p>
+                        <form
+                          className="professional-access-form"
+                          onSubmit={savePassword}
+                        >
+                          <label>
+                            Nova senha de demonstração
+                            <input
+                              type="password"
+                              name="password"
+                              autoComplete="new-password"
+                              required
+                              minLength={6}
+                              maxLength={128}
+                            />
+                          </label>
+                          <label>
+                            Confirmar senha de demonstração
+                            <input
+                              type="password"
+                              name="confirmation"
+                              autoComplete="new-password"
+                              required
+                              minLength={6}
+                              maxLength={128}
+                            />
+                          </label>
+                          <button className="primary" disabled={busy}>
+                            {busy ? "Salvando…" : "Salvar senha demonstrativa"}
+                          </button>
+                        </form>
+                      </>
+                    )}
                   </>
                 )}
                 {tab === "schedule" && (
@@ -412,9 +443,10 @@ export default function ProfessionalsPanel({
                     }}
                   >
                     <p className="availability-note">
-                      Habilitação e repasse por procedimento são alterados
-                      apenas pelo administrador. Atendimentos existentes mantêm
-                      os valores combinados.
+                      {singleProfessional
+                        ? "Com um único profissional ativo, todos os procedimentos são habilitados automaticamente. O repasse padrão é 100%."
+                        : "Habilitação e repasse por procedimento são alterados apenas pelo administrador. O repasse padrão é 100%."}{" "}
+                      Atendimentos existentes mantêm os valores combinados.
                     </p>
                     {procedures.map((proc) => {
                       const assignment = services.find(
@@ -425,7 +457,11 @@ export default function ProfessionalsPanel({
                           <label className="check-row">
                             <input
                               type="checkbox"
-                              checked={assignment?.enabled ?? false}
+                              checked={
+                                singleProfessional ||
+                                (assignment?.enabled ?? false)
+                              }
+                              disabled={singleProfessional}
                               onChange={(event) =>
                                 setServices((items) => [
                                   ...items.filter(
@@ -435,7 +471,7 @@ export default function ProfessionalsPanel({
                                     procedureId: proc.id,
                                     enabled: event.target.checked,
                                     commissionRate:
-                                      assignment?.commissionRate ?? 0,
+                                      assignment?.commissionRate ?? 100,
                                   },
                                 ])
                               }
@@ -456,7 +492,7 @@ export default function ProfessionalsPanel({
                               step="0.01"
                               required
                               disabled={!assignment?.enabled}
-                              value={assignment?.commissionRate ?? 0}
+                              value={assignment?.commissionRate ?? 100}
                               onChange={(event) =>
                                 setServices((items) => [
                                   ...items.filter(

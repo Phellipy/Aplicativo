@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import { Check, Sun, Moon } from "lucide-react";
 import { accentColors, type Appearance } from "./appearance";
 export default function AppearanceSettings({
@@ -11,7 +12,9 @@ export default function AppearanceSettings({
     <section className="appearance-settings" aria-labelledby="appearance-title">
       <h3 id="appearance-title">Aparência</h3>
       <p>
-        As alterações são aplicadas e salvas automaticamente neste navegador.
+        {instance.dataMode === "firebase"
+          ? "As alterações são aplicadas e salvas no banco do estabelecimento."
+          : "As alterações são aplicadas e salvas automaticamente neste navegador."}
       </p>
       <div className="period-buttons" role="group" aria-label="Modo de cor">
         <button

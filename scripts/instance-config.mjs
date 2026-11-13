@@ -30,6 +30,9 @@ export function instanceFiles({ id, name, domain, project }) {
   }
   const values = {
     VITE_INSTANCE_ID: id,
+    VITE_DATA_MODE: "demo-local",
+    VITE_ADMIN_EMAIL: "",
+    VITE_PROFESSIONAL_API_URL: "",
     VITE_ESTABLISHMENT_NAME: name.trim(),
     VITE_INSTANCE_DOMAIN: host,
     VITE_FIREBASE_PROJECT_ID: project,
@@ -41,7 +44,7 @@ export function instanceFiles({ id, name, domain, project }) {
   };
   return {
     ".env.local":
-      "# Configuração local da instância. Firebase ainda não conectado na v0.1.\n" +
+      "# Configuração local da instância. Preencha os dados do SDK e provisione as regras antes de ativar VITE_DATA_MODE=firebase.\n" +
       Object.entries(values)
         .map(([key, value]) => `${key}=${JSON.stringify(value)}`)
         .join("\n") +

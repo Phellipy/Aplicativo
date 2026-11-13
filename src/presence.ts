@@ -1,4 +1,4 @@
-import type { WorkSchedule } from "./domain";
+import { validTime, timeMinutes, type WorkSchedule } from "./domain";
 export type PresenceEvent = { scope: string; at: string; open: boolean };
 export const ESTABLISHMENT = "@establishment";
 export type TimeInterval = [number, number];
@@ -69,16 +69,14 @@ function scopeIntervals(
   const moment = localMoment(now);
   if (day > moment.date) return { intervals: [], tracked: true };
   const end = day === moment.date ? moment.minute : 1440;
-  let open = !first.open,
+  let open = localMoment(first.at).date === day ? !first.open : true,
     cursor = 0;
   const intervals: TimeInterval[] = [];
   for (const event of ordered) {
     const at = localMoment(event.at);
-    if (at.date < day) {
-      open = event.open;
-      continue;
-    }
+    if (at.date < day) continue;
     if (at.date > day) break;
+    if (event.open === open) continue;
     if (open && at.minute > cursor)
       intervals.push([cursor, Math.min(at.minute, end)]);
     cursor = at.minute;
@@ -105,22 +103,66 @@ export function presenceAvailability(
   };
 }
 
+function scheduledNow(schedule: WorkSchedule | undefined, now: string) {
+  const moment = localMoment(now);
+  const day = schedule?.days.find(
+    (d) => d.day === new Date(`${moment.date}T12:00:00Z`).getUTCDay(),
+  );
+  return (
+    !!day?.enabled &&
+    validTime(day.start) &&
+    validTime(day.end) &&
+    moment.minute >= timeMinutes(day.start) &&
+    moment.minute < timeMinutes(day.end)
+  );
+}
+function manuallyAbsent(schedule: WorkSchedule | undefined, now: string) {
+  const moment = localMoment(now);
+  return (
+    schedule?.restrictions.some(
+      (block) =>
+        block.date === moment.date &&
+        (block.allDay ||
+          (moment.minute >= timeMinutes(block.start) &&
+            moment.minute < timeMinutes(block.end))),
+    ) ?? false
+  );
+}
+function dailyPresence(
+  events: PresenceEvent[],
+  scope: string,
+  now: string,
+  scheduled: (at: string) => boolean,
+) {
+  const day = localMoment(now).date;
+  const last = events
+    .filter(
+      (e) => e.scope === scope && e.at <= now && localMoment(e.at).date === day,
+    )
+    .sort((a, b) => a.at.localeCompare(b.at))
+    .at(-1);
+  if (!last) return scheduled(now);
+  if (!last.open) return false;
+  // A regular arrival expires at the end of the shift. An explicit off-hours
+  // arrival remains an exception for this date only.
+  return scheduled(now) || !scheduled(last.at);
+}
 export function professionalPresent(
   events: PresenceEvent[],
   name: string,
   now: string,
   schedule?: WorkSchedule,
 ) {
-  const day = localMoment(now).date;
-  const enabled =
-    schedule?.days.find(
-      (d) => d.day === new Date(`${day}T12:00:00Z`).getUTCDay(),
-    )?.enabled ?? false;
-  return isPresent(
-    enabled ? events : events.filter((e) => localMoment(e.at).date === day),
-    name,
-    now,
-    enabled,
+  if (manuallyAbsent(schedule, now)) return false;
+  return dailyPresence(events, name, now, (at) => scheduledNow(schedule, at));
+}
+export function establishmentPresent(
+  events: PresenceEvent[],
+  now: string,
+  schedules: WorkSchedule[],
+) {
+  return dailyPresence(events, ESTABLISHMENT, now, (at) =>
+    schedules.some((s) => scheduledNow(s, at) && !manuallyAbsent(s, at)),
   );
 }
 export function controlPresence(
@@ -132,7 +174,7 @@ export function controlPresence(
 ) {
   const open =
     scope === ESTABLISHMENT
-      ? isPresent(events, scope, now)
+      ? establishmentPresent(events, now, schedules)
       : professionalPresent(
           events,
           scope,
@@ -141,7 +183,7 @@ export function controlPresence(
         );
   const effective =
     scope === soleProfessional
-      ? open && isPresent(events, ESTABLISHMENT, now)
+      ? open && establishmentPresent(events, now, schedules)
       : open;
   const scopes = scope === soleProfessional ? [scope, ESTABLISHMENT] : [scope];
   return [

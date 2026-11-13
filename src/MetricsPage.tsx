@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import type { PresenceEvent } from "./presence";
 import { useMemo, useState } from "react";
 import {
@@ -21,6 +22,7 @@ type Props = {
   procedures: Procedure[];
   schedules: WorkSchedule[];
   names: string[];
+  activeNames?: string[];
   presence: PresenceEvent[];
   now: string;
   establishmentName: string;
@@ -30,6 +32,7 @@ export default function MetricsPage({
   procedures,
   schedules,
   names,
+  activeNames = names,
   presence,
   now,
   establishmentName,
@@ -37,7 +40,9 @@ export default function MetricsPage({
   const [period, setPeriod] = useState<MetricsPeriod>("month"),
     [date, setDate] = useState(TODAY),
     [person, setPerson] = useState("Todos");
-  const selectedNames = person === "Todos" ? names : [person];
+  const selectedPerson =
+    activeNames.length <= 1 || !activeNames.includes(person) ? "Todos" : person;
+  const selectedNames = selectedPerson === "Todos" ? names : [selectedPerson];
   const report = useMemo(
     () =>
       metricsReport(
@@ -55,7 +60,7 @@ export default function MetricsPage({
       procedures,
       schedules,
       names,
-      person,
+      selectedPerson,
       period,
       date,
       presence,
@@ -72,8 +77,12 @@ export default function MetricsPage({
       <div className="report-print-heading">
         <h1>{establishmentName} · Métricas</h1>
         <p>
-          {range} · {person === "Todos" ? "Estabelecimento" : person} · Dados
-          demonstrativos
+          {range} ·{" "}
+          {selectedPerson === "Todos" ? "Estabelecimento" : selectedPerson} ·
+          Dados
+          {instance.dataMode === "firebase"
+            ? "do estabelecimento"
+            : "demonstrativos"}
         </p>
       </div>
       <div className="export-toolbar no-print">
@@ -118,18 +127,20 @@ export default function MetricsPage({
             }}
           />
         </label>
-        <label>
-          Profissional
-          <select
-            value={person}
-            onChange={(event) => setPerson(event.target.value)}
-          >
-            <option>Todos</option>
-            {names.map((name) => (
-              <option key={name}>{name}</option>
-            ))}
-          </select>
-        </label>
+        {activeNames.length > 1 && (
+          <label>
+            Profissional
+            <select
+              value={selectedPerson}
+              onChange={(event) => setPerson(event.target.value)}
+            >
+              <option>Todos</option>
+              {activeNames.map((name) => (
+                <option key={name}>{name}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <button
           className="secondary"
           onClick={() => {
@@ -137,11 +148,14 @@ export default function MetricsPage({
             setPeriod("day");
           }}
         >
-          Hoje (demo)
+          Hoje{instance.dataMode === "firebase" ? "" : " (demo)"}
         </button>
       </div>
       <p className="metrics-range">
-        {range} · {person === "Todos" ? "Estabelecimento consolidado" : person}
+        {range} ·{" "}
+        {selectedPerson === "Todos"
+          ? "Estabelecimento consolidado"
+          : selectedPerson}
       </p>
       <div className="metrics-kpis">
         {[
@@ -199,7 +213,7 @@ export default function MetricsPage({
             ? "Este período inclui dias sem registros, calculados pela jornada prevista (inclusive datas futuras ainda sem controle iniciado)."
             : "Este período usa o controle de presença."}{" "}
           Os registros usam o horário real de São Paulo, independentemente da
-          data demonstrativa da agenda.
+          data consultada na agenda.
         </span>
       </div>
       <div className="metrics-grid">
@@ -341,7 +355,7 @@ export default function MetricsPage({
           <div className="panel-head">
             <div>
               <h2>Resumo dos serviços concluídos</h2>
-              <p>Valores demonstrativos do período selecionado</p>
+              <p>Valores do período selecionado</p>
             </div>
           </div>
           <dl>

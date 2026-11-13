@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import {
   calculateCommission,
   filterPeriod,
@@ -66,7 +67,7 @@ export async function financeWorkbook(
   sheet.getRow(1).height = 28;
   sheet.mergeCells("A2:M2");
   sheet.getCell("A2").value =
-    `${periodLabel} · Dados demonstrativos · Serviços concluídos`;
+    `${periodLabel} · ${instance.dataMode === "firebase" ? "Dados do estabelecimento" : "Dados demonstrativos"} · Serviços concluídos`;
   sheet.mergeCells("A3:M3");
   sheet.getCell("A3").value =
     "Saldo antes de despesas = recebido menos repasses dos serviços pagos. Não representa lucro. Documento informado no cadastro; sem validação fiscal.";

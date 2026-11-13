@@ -24,12 +24,14 @@ export default function AppointmentFields({
   initialDate,
   professionalNames,
   currentProfessional,
+  hideClient = false,
 }: BaseProps & {
   clients: Client[];
   admin: boolean;
   initialDate: string;
   professionalNames: string[];
   currentProfessional: string;
+  hideClient?: boolean;
 }) {
   const [professional, setProfessional] = useState(
     admin ? (professionalNames[0] ?? "") : currentProfessional,
@@ -53,6 +55,13 @@ export default function AppointmentFields({
     p.professionals?.includes(professional),
   );
   const chosen = enabled.filter((p) => selected.includes(p.id));
+  const setupHint = !professional
+    ? "Cadastre e habilite um profissional antes de agendar."
+    : !procedures.length
+      ? "Cadastre um procedimento na aba Procedimentos e depois habilite-o em Profissionais → nome do profissional → Procedimentos e repasses."
+      : !enabled.length
+        ? "Habilite os procedimentos deste profissional em Profissionais → nome do profissional → Procedimentos e repasses."
+        : "";
   const duration = chosen.reduce((sum, p) => sum + p.duration, 0),
     price = chosen.reduce((sum, p) => sum + p.price, 0);
   const available = getAvailableTimes(
@@ -65,14 +74,16 @@ export default function AppointmentFields({
   );
   return (
     <>
-      <label>
-        Cliente
-        <select name="client" required>
-          {clients.map((client) => (
-            <option key={client.id}>{client.name}</option>
-          ))}
-        </select>
-      </label>
+      {!hideClient && (
+        <label>
+          Cliente
+          <select name="client" required>
+            {clients.map((client) => (
+              <option key={client.id}>{client.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
       {admin ? (
         <label>
           Profissional
@@ -119,9 +130,7 @@ export default function AppointmentFields({
             </span>
           </label>
         ))}
-        {!enabled.length && (
-          <p>Nenhum procedimento habilitado para este profissional.</p>
-        )}
+        {!enabled.length && <p role="status">{setupHint}</p>}
       </fieldset>
       <div className="booking-total" role="status">
         <span>
@@ -204,9 +213,9 @@ export default function AppointmentFields({
           </>
         )}
       </fieldset>
-      <div className="form-row">
+      <div className="form-row booking-datetime">
         <label>
-          {recurring ? "A partir de" : "Data"}
+          <span>{recurring ? "A partir de" : "Data"}</span>
           <input
             name="date"
             type="date"
@@ -219,7 +228,9 @@ export default function AppointmentFields({
           />
         </label>
         <label>
-          {recurring ? "Horário (primeira ocorrência)" : "Horário disponível"}
+          <span>
+            {recurring ? "Horário (primeira ocorrência)" : "Horário disponível"}
+          </span>
           <select
             name="time"
             required
@@ -231,7 +242,15 @@ export default function AppointmentFields({
               (recurring && !!recurrenceError)
             }
           >
-            <option value="">Selecione um horário</option>
+            <option value="">
+              {setupHint
+                ? "Configure os procedimentos primeiro"
+                : !chosen.length
+                  ? "Selecione um procedimento primeiro"
+                  : !available.length
+                    ? "Nenhum horário disponível"
+                    : "Selecione um horário"}
+            </option>
             {available.map((slot) => (
               <option key={slot}>{slot}</option>
             ))}
@@ -239,11 +258,13 @@ export default function AppointmentFields({
         </label>
       </div>
       <p className="availability-note" role="status">
-        {!chosen.length
-          ? "Selecione os procedimentos para consultar horários."
-          : available.length
-            ? `${available.length} horários disponíveis para os ${duration} minutos do atendimento.`
-            : "Sem horários disponíveis nessa data para a duração total. Verifique a jornada e as ausências ou escolha outra data."}
+        {setupHint
+          ? setupHint
+          : !chosen.length
+            ? "Selecione os procedimentos para consultar horários."
+            : available.length
+              ? `${available.length} horários disponíveis para os ${duration} minutos do atendimento.`
+              : "Sem horários disponíveis nessa data para a duração total. Verifique a jornada e as ausências ou escolha outra data."}
       </p>
     </>
   );
@@ -268,9 +289,9 @@ export function RescheduleFields({
   );
   return (
     <>
-      <div className="form-row">
+      <div className="form-row booking-datetime">
         <label>
-          Nova data
+          <span>Nova data</span>
           <input
             type="date"
             name="rescheduleDate"
@@ -283,7 +304,7 @@ export function RescheduleFields({
           />
         </label>
         <label>
-          Novo horário
+          <span>Novo horário</span>
           <select
             name="rescheduleTime"
             required

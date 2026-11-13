@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import { useState } from "react";
 import {
   TODAY,
@@ -89,9 +90,10 @@ export default function FinancePage({
         </p>
       )}
       <div className="notice">
-        Dados demonstrativos. Recebido considera serviços concluídos com
-        pagamento registrado. Repasses são valores calculados, sem comprovação
-        de transferência. Não há integração bancária.
+        {instance.dataMode === "firebase" ? "" : "Dados demonstrativos. "}
+        Recebido considera serviços concluídos com pagamento registrado.
+        Repasses são valores calculados, sem comprovação de transferência. Não
+        há integração bancária.
       </div>
       <div className="stats finance-stats">
         {[

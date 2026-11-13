@@ -14,3 +14,14 @@ coverage/
 .firebaserc
 .firebase/
 firebase-debug.log*
+
+# Logs de emuladores e testes
+firestore-debug.log
+ui-debug.log
+database-debug.log
+
+# Segredos e artefatos locais do backend de acesso
+.dev.vars
+.dev.vars.*
+.wrangler/
+*service-account*.json

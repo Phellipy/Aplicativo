@@ -1,0 +1,30 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "gestao-professional-access",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "vars": {
+    "INSTANCE_ID": "cliente-a",
+    "FIREBASE_PROJECT_ID": "seu-projeto-firebase",
+    "ALLOWED_ORIGINS": "https://agenda.exemplo.com,https://seu-projeto-firebase.web.app,https://seu-projeto-firebase.firebaseapp.com",
+  },
+  "ratelimits": [
+    {
+      "name": "LOGIN_IP_LIMITER",
+      "namespace_id": "1301",
+      "simple": { "limit": 20, "period": 60 },
+    },
+    {
+      "name": "LOGIN_USER_LIMITER",
+      "namespace_id": "1302",
+      "simple": { "limit": 5, "period": 60 },
+    },
+    {
+      "name": "API_IP_LIMITER",
+      "namespace_id": "1303",
+      "simple": { "limit": 120, "period": 60 },
+    },
+  ],
+  "observability": { "enabled": false },
+}

@@ -1,3 +1,4 @@
+import { instance } from "./instance";
 import { useState, type ChangeEvent } from "react";
 export const MAX_LOGO_FILE = 2 * 1024 * 1024;
 export function validateLogoFile(file: Pick<File, "size" | "type">) {
@@ -65,7 +66,9 @@ export default function LogoSettings({
       <h3>Logo na tela de acesso</h3>
       <p>
         PNG, JPEG ou WebP, até 2 MB. A imagem é ajustada para até 512 px e
-        armazenada apenas neste navegador.
+        {instance.dataMode === "firebase"
+          ? "salva no banco do estabelecimento."
+          : "armazenada apenas neste navegador."}
       </p>
       {logo && (
         <div className="logo-preview">

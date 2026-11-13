@@ -7,9 +7,9 @@ export function readInstance(env: InstanceEnv) {
     );
   return {
     id,
-    name: env.VITE_ESTABLISHMENT_NAME?.trim() || "Navalha & Co.",
+    name: env.VITE_ESTABLISHMENT_NAME?.trim() || "Meu estabelecimento",
     domain: env.VITE_INSTANCE_DOMAIN?.trim() || "",
-    // Declared settings only: no Firebase connection is made in version 0.1.
+    // Public Web SDK configuration; authorization is enforced by Firestore rules.
     firebase: {
       apiKey: env.VITE_FIREBASE_API_KEY || "",
       authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "",
@@ -18,12 +18,16 @@ export function readInstance(env: InstanceEnv) {
       storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "",
       messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
     },
-    dataMode: "demo-local" as const,
+    dataMode:
+      env.VITE_DATA_MODE === "firebase"
+        ? ("firebase" as const)
+        : ("demo-local" as const),
+    adminEmail: env.VITE_ADMIN_EMAIL?.trim().toLowerCase() || "",
   };
 }
 export function instanceStorageKey(key: string, id: string) {
   // Retain existing demonstration data when no instance has been configured.
   return id === "demo" ? key : `${id}:${key}`;
 }
-export const instance = readInstance(import.meta.env);
+export const instance = readInstance(import.meta.env ?? {});
 export const storageKey = (key: string) => instanceStorageKey(key, instance.id);

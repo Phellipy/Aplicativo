@@ -1,8 +1,9 @@
+import { instance } from "./instance";
 import type { WorkSchedule } from "./domain";
 import { useState } from "react";
 import {
   ESTABLISHMENT,
-  isPresent,
+  establishmentPresent,
   professionalPresent,
   localMoment,
   type PresenceEvent,
@@ -35,14 +36,15 @@ export default function PresenceControl({
       : professional;
   const whole = target === ESTABLISHMENT;
   const individual = whole
-    ? isPresent(events, target, now)
+    ? establishmentPresent(events, now, schedules)
     : professionalPresent(
         events,
         target,
         now,
         schedules.find((s) => s.professional === target),
       );
-  const open = individual && (!single || isPresent(events, ESTABLISHMENT, now));
+  const open =
+    individual && (!single || establishmentPresent(events, now, schedules));
   const label = whole
     ? open
       ? "Aberto"
@@ -77,7 +79,7 @@ export default function PresenceControl({
       <details className="presence-history">
         <summary aria-label="Sobre os registros de presença">i</summary>
         <div>
-          <strong>Presença · registro local demonstrativo</strong>
+          <strong>Presença · registros de jornada</strong>
           <p>
             O botão registra o horário real de São Paulo, mesmo que a agenda
             esteja em outra data. Fechado ou ausente pausa a ocupação; reabrir
@@ -87,12 +89,20 @@ export default function PresenceControl({
             profissional voltou a trabalhar.
           </p>
           <p>
-            Antes do primeiro fechamento, considera-se a jornada cumprida até
-            aquele momento. Dias anteriores ao início dos registros usam a
-            jornada prevista. Sair do perfil ou fechar o aplicativo não marca
-            saída: o último estado fica salvo neste navegador. Não há
-            sincronização entre aparelhos. Com um único profissional, o botão
-            controla a presença e a abertura juntos.
+            Ao abrir o aplicativo, o indicador usa os dias e horários da jornada
+            em São Paulo. Antes do início e a partir do término, fica Ausente;
+            dentro do expediente, Presente. Marcações manuais valem para o dia
+            atual: uma saída permanece até nova chegada ou o próximo dia. Uma
+            chegada durante o expediente termina com a jornada; chegadas fora
+            dela registram uma exceção somente para aquele dia. Antes do
+            primeiro fechamento, considera-se a jornada cumprida até aquele
+            momento. Dias anteriores ao início dos registros usam a jornada
+            prevista. Sair do perfil ou fechar o aplicativo não marca saída.{" "}
+            {instance.dataMode === "firebase"
+              ? "As marcações manuais ficam salvas no banco e sincronizadas entre aparelhos."
+              : "As marcações manuais ficam salvas neste navegador, sem sincronização entre aparelhos."}{" "}
+            Com um único profissional, o botão controla a presença e a abertura
+            juntos.
           </p>
           <ul>
             {events
