@@ -2324,6 +2324,10 @@ fieldset .check-row input {
   flex-direction: column;
   gap: 3px;
 }
+.service-choice strong {
+  font-size: 14px;
+  line-height: 1.4;
+}
 .service-choice small {
   font-size: 11px;
 }
