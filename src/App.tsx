@@ -687,7 +687,11 @@ export default function App() {
           <div className="login-box">
             <span className="demo-tag">VERSÃO 0.1 · DEMONSTRAÇÃO</span>
             <h1>Bem-vindo de volta.</h1>
-            <p>Escolha um perfil para explorar o seu espaço.</p>
+            <p>
+              {activeProfessionals.length > 1
+                ? "Escolha um perfil para explorar o seu espaço."
+                : "Entre com o acesso do administrador para gerenciar seu espaço."}
+            </p>
             <div className="login-choice">
               <ShieldCheck />
               <div>
@@ -706,52 +710,56 @@ export default function App() {
               }}
               onLogin={() => setRole("admin")}
             />
-            <div className="login-professional">
-              <label>
-                Perfil profissional
-                <select
-                  value={
-                    activeProfessionals.includes(loginName) ? loginName : ""
-                  }
-                  onChange={(event) => {
-                    setLoginName(event.target.value);
-                    setLoginPassword("");
-                    setLoginError("");
-                  }}
-                >
-                  <option value="" disabled>
-                    Selecione um profissional
-                  </option>
-                  {activeProfessionals.map((name) => (
-                    <option key={name}>{name}</option>
-                  ))}
-                </select>
-              </label>
-              {records.find((p) => p.name === loginName)?.credential && (
+            {activeProfessionals.length > 1 && (
+              <div className="login-professional">
                 <label>
-                  Senha de demonstração
-                  <input
-                    type="password"
-                    value={loginPassword}
-                    onChange={(event) => setLoginPassword(event.target.value)}
-                    autoComplete="off"
-                  />
+                  Perfil profissional
+                  <select
+                    value={
+                      activeProfessionals.includes(loginName) ? loginName : ""
+                    }
+                    onChange={(event) => {
+                      setLoginName(event.target.value);
+                      setLoginPassword("");
+                      setLoginError("");
+                    }}
+                  >
+                    <option value="" disabled>
+                      Selecione um profissional
+                    </option>
+                    {activeProfessionals.map((name) => (
+                      <option key={name}>{name}</option>
+                    ))}
+                  </select>
                 </label>
-              )}
-              {loginError && (
-                <div className="form-error" role="alert">
-                  {loginError}
-                </div>
-              )}
-              <button
-                className="secondary wide"
-                disabled={loginBusy || !activeProfessionals.includes(loginName)}
-                onClick={enterProfessional}
-              >
-                {loginBusy ? "Verificando…" : `Explorar como ${loginName}`}
-                <ChevronRight size={18} />
-              </button>
-            </div>
+                {records.find((p) => p.name === loginName)?.credential && (
+                  <label>
+                    Senha de demonstração
+                    <input
+                      type="password"
+                      value={loginPassword}
+                      onChange={(event) => setLoginPassword(event.target.value)}
+                      autoComplete="off"
+                    />
+                  </label>
+                )}
+                {loginError && (
+                  <div className="form-error" role="alert">
+                    {loginError}
+                  </div>
+                )}
+                <button
+                  className="secondary wide"
+                  disabled={
+                    loginBusy || !activeProfessionals.includes(loginName)
+                  }
+                  onClick={enterProfessional}
+                >
+                  {loginBusy ? "Verificando…" : `Explorar como ${loginName}`}
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            )}
             <div className="notice">
               <ShieldCheck size={20} />
               <span>
