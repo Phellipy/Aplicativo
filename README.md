@@ -18,7 +18,7 @@ O endereço padrão é http://127.0.0.1:5173. Sem `.env.local`, inicia em **demo
 ## Funcionalidades
 
 - Login administrativo, Dashboard, Agenda, Clientes, Financeiro, Métricas, Profissionais, Procedimentos e Configurações.
-- Agenda em lista e pilha proporcional à duração, reagendamento por arraste quando suportado, múltiplos procedimentos, horários disponíveis e recorrência semanal. Cancelados liberam o horário e saem da agenda ativa.
+- Agenda em lista e pilha proporcional à duração, tela cheia com escala ajustável e controles compactos na linha da data, reagendamento por arraste quando suportado, múltiplos procedimentos, horários disponíveis e recorrência semanal. Cancelados liberam o horário e saem da agenda ativa.
 - Confirmação de presença, falta, cancelamento e conclusão com dinheiro, Pix, crédito, débito ou não pago; o pagamento pode ser corrigido depois.
 - Clientes editáveis e excluíveis, CPF/CNPJ opcional; importação vCard de até 10.000 contatos, apenas celulares, deduplicação e gravação em lotes.
 - Financeiro por dia/semana/mês/ano, exportação Excel e documento do cliente; métricas, gráficos, ocupação por disponibilidade e exportação PDF pela impressão.
@@ -44,7 +44,7 @@ Consulte [instalação por cliente](docs/instancias.md), [autenticação](docs/f
 firebase emulators:exec --only firestore --project demo-gestao-rules "npm run test:rules"
 ```
 
-Validação desta atualização: **277 testes unitários e 18 testes de regras/persistência passaram**, além do build.
+Validação desta atualização: **282 testes unitários e 18 testes de regras/persistência passaram**, além do build.
 
 Os testes do emulador usam dados fictícios e não acessam produção. O build pode avisar sobre tamanho dos pacotes Firebase e ExcelJS; ExcelJS é carregado sob demanda.
 
@@ -53,3 +53,5 @@ Os testes do emulador usam dados fictícios e não acessam produção. O build p
 O [manual do usuário](docs/manual-usuario.md) é convertido para `/manual.html` no build e pode ser impresso como PDF. O backend profissional exige atualização manual para refletir mudanças de outros aparelhos. As restrições e verificações de horário não substituem um bloqueio global entre todas as operações administrativas simultâneas. Não há cobrança, Pix bancário, envio automático de WhatsApp, auditoria completa ou backup automático implementados.
 
 Branch de atualização: `feature/versao-0.1`. Esta atualização do repositório não publica nenhum site nem altera instalações existentes.
+
+A abertura administrativa prioriza os dados do Início. As áreas e lembretes carregam conforme a necessidade; a edição fica bloqueada até a leitura dos dados. O histórico de atendimentos ainda é carregado integralmente, portanto o tempo depende da conexão e do volume de registros.

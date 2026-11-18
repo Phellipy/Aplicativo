@@ -21,7 +21,7 @@ Com apenas um profissional ativo e não excluído, todos os procedimentos ficam 
 
 ## 2. Como usar no celular
 
-Abra o mesmo endereço pelo navegador do celular e entre na sua conta administrativa. Use o menu para alternar entre os módulos. Os dados são compartilhados entre os aparelhos pela internet.
+Abra o mesmo endereço pelo navegador do celular e entre na sua conta administrativa. Use o menu para alternar entre os módulos. Os dados são compartilhados entre os aparelhos pela internet. O Início carrega primeiro os dados essenciais; as outras áreas e lembretes podem mostrar uma breve indicação de carregamento antes de liberar a edição.
 
 No agendamento, data e horário aparecem lado a lado. Se alguma atualização visual ainda não apareceu, recarregue a página. Para acompanhar o atendimento no celular, a visualização **Lista** oferece os mesmos controles de status e pagamento da visualização **Pilha**.
 
@@ -107,7 +107,7 @@ Esses botões registram o pagamento manualmente. O aplicativo não cobra cartão
 
 ## 7. Agenda em Lista ou Pilha
 
-Alterne entre **Lista** e **Pilha**. Na pilha diária, cada caixa ocupa a altura correspondente à duração total e mostra cliente, procedimentos, valor e status. A cor acompanha a situação do atendimento.
+Alterne entre **Lista** e **Pilha**. Na pilha diária, cada caixa ocupa a altura correspondente à duração total e mostra cliente, procedimentos, valor e status. Use **Tela cheia** para ocupar a área do navegador e ajustar a escala dos horários à jornada e ao tamanho da tela. **Ampliar horários** permite ler caixas curtas com rolagem; no celular os botões aparecem como **Ampliar**, **Ajustar** e **Sair**, na mesma linha da data; **Ajustar à tela** volta ao encaixe. Para sair, use **Sair da tela cheia** ou Escape. Toque em uma caixa para consultar os detalhes completos. A cor acompanha a situação do atendimento.
 
 Para reagendar um atendimento Agendado ou Confirmado, use o controle de reagendamento ou arraste a caixa para outro horário quando o navegador permitir. O sistema valida o destino: não é permitido criar conflito, ultrapassar a jornada ou ignorar uma ausência. Se o arraste não for confortável no celular, use a ação de reagendamento.
 

@@ -1,3 +1,10 @@
+import CloudDataBoundary from "./CloudDataBoundary";
+import {
+  pageCloudKeys,
+  reminderCloudKeys,
+  returnCloudKeys,
+  appointmentCloudKeys,
+} from "./cloudLoading";
 import { useCloudSession, useRemoteStored } from "./CloudContext";
 import { cloudKeys, cloudKey } from "./cloudModel";
 import { instance, storageKey } from "./instance";
@@ -798,20 +805,29 @@ export default function App() {
       </div>
     );
   const renderReminder = (appointment: Appointment) => (
-    <AppointmentReminderLink
-      appointment={appointment}
-      clients={clients}
-      template={appointmentTemplate}
-      establishment={establishmentName}
-      opening={reminderOpenings[appointment.id]}
-      onOpen={(signature) =>
-        setReminderOpenings((items) => ({
-          ...items,
-          [appointment.id]: { signature, openedAt: new Date().toISOString() },
-        }))
+    <CloudDataBoundary
+      keys={reminderCloudKeys}
+      fallback={
+        <span role="status" aria-label="Carregando lembrete">
+          …
+        </span>
       }
-      onError={setToast}
-    />
+    >
+      <AppointmentReminderLink
+        appointment={appointment}
+        clients={clients}
+        template={appointmentTemplate}
+        establishment={establishmentName}
+        opening={reminderOpenings[appointment.id]}
+        onOpen={(signature) =>
+          setReminderOpenings((items) => ({
+            ...items,
+            [appointment.id]: { signature, openedAt: new Date().toISOString() },
+          }))
+        }
+        onError={setToast}
+      />
+    </CloudDataBoundary>
   );
   const appointmentRows = (list: Appointment[], actions = false) =>
     actions ? (
@@ -1177,655 +1193,622 @@ export default function App() {
               </button>
             )}
           </div>
-          {page === "Dashboard" && (
-            <>
-              <div className="filter-row">
-                <PeriodControls
-                  label="do início"
-                  period={dashboardPeriod}
-                  date={dashboardDate}
-                  onPeriod={setDashboardPeriod}
-                  onDate={setDashboardDate}
-                />
-                {admin && activeProfessionals.length > 1 && (
-                  <select
-                    aria-label="Filtrar resultados por profissional"
-                    value={person}
-                    onChange={(e) => setPerson(e.target.value)}
-                  >
-                    <option value="Todos">Estabelecimento consolidado</option>
-                    {activeProfessionals.map((p) => (
-                      <option key={p}>{p}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              <div
-                className={`stats ${activeProfessionals.length === 1 ? "stats-single" : ""}`}
-              >
-                {[
-                  {
-                    label: admin
-                      ? "Recebido no período"
-                      : "Meus ganhos no período",
-                    value: money(admin ? revenue : payout),
-                    note: "Concluídos com pagamento registrado",
-                    icon: Wallet,
-                  },
-                  {
-                    label: "Atendimentos",
-                    value: String(today.length).padStart(2, "0"),
-                    note: `${completed.length} concluído(s) no período`,
-                    icon: CalendarDays,
-                  },
-                  {
-                    label: admin
-                      ? "Repasses previstos"
-                      : "Meus ganhos previstos",
-                    value: money(today.reduce((s, a) => s + commission(a), 0)),
-                    note: "Sobre a agenda do período",
-                    hidden: admin && activeProfessionals.length === 1,
-                    icon: UserRound,
-                  },
-                  {
-                    label: "Taxa de ocupação",
-                    value: formatPercentage(occupancy.rate),
-                    note: `${hours(occupancy.occupiedMinutes)} atendidas / ${hours(occupancy.availableMinutes)} disponíveis`,
-                    icon: Clock,
-                  },
-                ]
-                  .filter((s) => !("hidden" in s && s.hidden))
-                  .map((s, i) => (
-                    <div className={`stat stat-${i}`} key={s.label}>
-                      <div>
-                        <span>{s.label}</span>
-                        <s.icon size={18} />
-                      </div>
-                      <strong>{s.value}</strong>
-                      <small>{s.note}</small>
-                    </div>
-                  ))}
-              </div>
-              <p className="occupancy-caption">
-                Serviços concluídos ÷ tempo disponível, respeitando jornada,
-                ausências e registros de presença.{" "}
-                {occupancy.scheduledDays > 0
-                  ? "Há dias sem registros: usamos a jornada prevista como referência."
-                  : "Base limitada ao tempo de presença registrado até agora."}{" "}
-                Agendamentos futuros não contam como tempo atendido.
-              </p>
-              <div className="dashboard-grid">
-                <section
-                  className={`panel schedule-panel ${admin ? "admin" : ""}`}
-                >
-                  <div className="panel-head">
-                    <div>
-                      <h2>
-                        Agendamentos do período{" "}
-                        <span className="sub-count">{today.length}</span>
-                      </h2>
-                      <p>{reportLabel}</p>
-                    </div>
-                    <button
-                      className="text-button"
-                      onClick={() => {
-                        navigate("Agenda");
-                        setDate(dashboardDate);
-                        setAgendaPeriod(dashboardPeriod);
-                      }}
+          <CloudDataBoundary keys={pageCloudKeys[page] ?? []}>
+            {page === "Dashboard" && (
+              <>
+                <div className="filter-row">
+                  <PeriodControls
+                    label="do início"
+                    period={dashboardPeriod}
+                    date={dashboardDate}
+                    onPeriod={setDashboardPeriod}
+                    onDate={setDashboardDate}
+                  />
+                  {admin && activeProfessionals.length > 1 && (
+                    <select
+                      aria-label="Filtrar resultados por profissional"
+                      value={person}
+                      onChange={(e) => setPerson(e.target.value)}
                     >
-                      Ver agenda <ArrowUpRight size={16} />
-                    </button>
-                  </div>
-                  {appointmentRows(
-                    today.sort(
-                      (a, b) =>
-                        a.date.localeCompare(b.date) ||
-                        a.time.localeCompare(b.time),
-                    ),
+                      <option value="Todos">Estabelecimento consolidado</option>
+                      {activeProfessionals.map((p) => (
+                        <option key={p}>{p}</option>
+                      ))}
+                    </select>
                   )}
-                </section>
-                <section className="panel alerts">
-                  <div className="panel-head">
-                    <h2>Para ficar de olho</h2>
-                    <span className="little-dot" />
-                  </div>
-                  {admin ? (
-                    <>
-                      <div className="alert-icon">
-                        <MessageSquare size={23} />
+                </div>
+                <div
+                  className={`stats ${activeProfessionals.length === 1 ? "stats-single" : ""}`}
+                >
+                  {[
+                    {
+                      label: admin
+                        ? "Recebido no período"
+                        : "Meus ganhos no período",
+                      value: money(admin ? revenue : payout),
+                      note: "Concluídos com pagamento registrado",
+                      icon: Wallet,
+                    },
+                    {
+                      label: "Atendimentos",
+                      value: String(today.length).padStart(2, "0"),
+                      note: `${completed.length} concluído(s) no período`,
+                      icon: CalendarDays,
+                    },
+                    {
+                      label: admin
+                        ? "Repasses previstos"
+                        : "Meus ganhos previstos",
+                      value: money(
+                        today.reduce((s, a) => s + commission(a), 0),
+                      ),
+                      note: "Sobre a agenda do período",
+                      hidden: admin && activeProfessionals.length === 1,
+                      icon: UserRound,
+                    },
+                    {
+                      label: "Taxa de ocupação",
+                      value: formatPercentage(occupancy.rate),
+                      note: `${hours(occupancy.occupiedMinutes)} atendidas / ${hours(occupancy.availableMinutes)} disponíveis`,
+                      icon: Clock,
+                    },
+                  ]
+                    .filter((s) => !("hidden" in s && s.hidden))
+                    .map((s, i) => (
+                      <div className={`stat stat-${i}`} key={s.label}>
+                        <div>
+                          <span>{s.label}</span>
+                          <s.icon size={18} />
+                        </div>
+                        <strong>{s.value}</strong>
+                        <small>{s.note}</small>
                       </div>
-                      <h3>É hora de se reconectar</h3>
-                      <p>
-                        {eligible.length} clientes estão há {returnDays} dias ou
-                        mais sem atendimento.
-                      </p>
+                    ))}
+                </div>
+                <p className="occupancy-caption">
+                  Serviços concluídos ÷ tempo disponível, respeitando jornada,
+                  ausências e registros de presença.{" "}
+                  {occupancy.scheduledDays > 0
+                    ? "Há dias sem registros: usamos a jornada prevista como referência."
+                    : "Base limitada ao tempo de presença registrado até agora."}{" "}
+                  Agendamentos futuros não contam como tempo atendido.
+                </p>
+                <div className="dashboard-grid">
+                  <section
+                    className={`panel schedule-panel ${admin ? "admin" : ""}`}
+                  >
+                    <div className="panel-head">
+                      <div>
+                        <h2>
+                          Agendamentos do período{" "}
+                          <span className="sub-count">{today.length}</span>
+                        </h2>
+                        <p>{reportLabel}</p>
+                      </div>
                       <button
-                        className="secondary wide"
-                        onClick={() => navigate("Clientes")}
-                      >
-                        Revisar lembretes <ChevronRight size={16} />
-                      </button>
-                      <div className="alert-foot">
-                        <ShieldCheck size={16} /> Cada mensagem é enviada por
-                        você no WhatsApp.
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="alert-icon">
-                        <CalendarDays size={23} />
-                      </div>
-                      <h3>Seu próximo atendimento</h3>
-                      <p>
-                        {today.find((a) => a.status === "Confirmado")?.client ||
-                          "Nenhum atendimento confirmado"}
-                      </p>
-                      <button
-                        className="secondary"
+                        className="text-button"
                         onClick={() => {
                           navigate("Agenda");
                           setDate(dashboardDate);
                           setAgendaPeriod(dashboardPeriod);
                         }}
                       >
-                        Ver minha agenda
+                        Ver agenda <ArrowUpRight size={16} />
                       </button>
-                    </>
-                  )}
-                </section>
-                <section className="panel">
-                  <div className="panel-head">
-                    <div>
-                      <h2>
-                        {admin
-                          ? "Agenda por profissional"
-                          : "Minha agenda em números"}
-                      </h2>
-                      <p>Previsão de atendimentos · {reportLabel}</p>
                     </div>
-                    <span className="badge blue">{reportLabel}</span>
-                  </div>
-                  <div className="team-list">
-                    {(admin ? professionals : [currentProfessional]).map(
-                      (p, i) => (
-                        <div className="team-row" key={p}>
-                          <Avatar name={p} />
-                          <div>
-                            <strong>{p}</strong>
-                            <small>
-                              {today.filter((a) => a.professional === p).length}{" "}
-                              atendimentos
-                            </small>
-                          </div>
-                          <div className="mini-bar">
-                            <i style={{ width: `${25 + i * 17}%` }} />
-                          </div>
-                          <span>
-                            {money(
-                              today
-                                .filter((a) => a.professional === p)
-                                .reduce((s, a) => s + a.value, 0),
-                            )}
-                          </span>
-                        </div>
+                    {appointmentRows(
+                      today.sort(
+                        (a, b) =>
+                          a.date.localeCompare(b.date) ||
+                          a.time.localeCompare(b.time),
                       ),
                     )}
-                  </div>
-                </section>
-                <section className="panel day-summary">
-                  <div className="panel-head">
-                    <h2>Resumo do período</h2>
-                    <Wallet size={19} />
-                  </div>
-                  <div>
-                    <span>Serviços previstos</span>
-                    <strong>
-                      {money(today.reduce((s, a) => s + a.value, 0))}
-                    </strong>
-                  </div>
-                  {activeProfessionals.length !== 1 && (
+                  </section>
+                  <section className="panel alerts">
+                    <div className="panel-head">
+                      <h2>Para ficar de olho</h2>
+                      <span className="little-dot" />
+                    </div>
+                    {admin ? (
+                      <CloudDataBoundary keys={returnCloudKeys}>
+                        <div className="alert-icon">
+                          <MessageSquare size={23} />
+                        </div>
+                        <h3>É hora de se reconectar</h3>
+                        <p>
+                          {eligible.length} clientes estão há {returnDays} dias
+                          ou mais sem atendimento.
+                        </p>
+                        <button
+                          className="secondary wide"
+                          onClick={() => navigate("Clientes")}
+                        >
+                          Revisar lembretes <ChevronRight size={16} />
+                        </button>
+                        <div className="alert-foot">
+                          <ShieldCheck size={16} /> Cada mensagem é enviada por
+                          você no WhatsApp.
+                        </div>
+                      </CloudDataBoundary>
+                    ) : (
+                      <>
+                        <div className="alert-icon">
+                          <CalendarDays size={23} />
+                        </div>
+                        <h3>Seu próximo atendimento</h3>
+                        <p>
+                          {today.find((a) => a.status === "Confirmado")
+                            ?.client || "Nenhum atendimento confirmado"}
+                        </p>
+                        <button
+                          className="secondary"
+                          onClick={() => {
+                            navigate("Agenda");
+                            setDate(dashboardDate);
+                            setAgendaPeriod(dashboardPeriod);
+                          }}
+                        >
+                          Ver minha agenda
+                        </button>
+                      </>
+                    )}
+                  </section>
+                  <section className="panel day-summary">
+                    <div className="panel-head">
+                      <h2>Resumo do período</h2>
+                      <Wallet size={19} />
+                    </div>
                     <div>
-                      <span>Repasses previstos</span>
+                      <span>Serviços previstos</span>
                       <strong>
-                        {money(today.reduce((s, a) => s + commission(a), 0))}
+                        {money(today.reduce((s, a) => s + a.value, 0))}
                       </strong>
                     </div>
-                  )}
-                  <div className="summary-total">
-                    <span>
+                    {activeProfessionals.length !== 1 && (
+                      <div>
+                        <span>Repasses previstos</span>
+                        <strong>
+                          {money(today.reduce((s, a) => s + commission(a), 0))}
+                        </strong>
+                      </div>
+                    )}
+                    <div className="summary-total">
+                      <span>
+                        {admin
+                          ? "Saldo antes de despesas"
+                          : "Meus ganhos concluídos"}
+                      </span>
+                      <strong>
+                        {money(admin ? revenue - paidPayout : payout)}
+                      </strong>
+                    </div>
+                    <p>
                       {admin
-                        ? "Saldo antes de despesas"
-                        : "Meus ganhos concluídos"}
-                    </span>
-                    <strong>
-                      {money(admin ? revenue - paidPayout : payout)}
-                    </strong>
-                  </div>
-                  <p>
-                    {admin
-                      ? "Recebido menos repasses dos serviços pagos. Custos, taxas e despesas não estão cadastrados. Este saldo não representa lucro."
-                      : "Valores de demonstração, sem processamento de pagamentos."}
-                  </p>
-                </section>
-              </div>
-            </>
-          )}
-          {page === "Agenda" && (
-            <>
-              <section className="toolbar">
-                <PeriodControls
-                  label="da agenda"
-                  period={agendaPeriod}
-                  date={date}
-                  onPeriod={(value) => {
-                    setAgendaPeriod(value);
-                    setExpandedAppointment(null);
-                  }}
-                  onDate={(value) => {
-                    setDate(value);
-                    setExpandedAppointment(null);
-                  }}
-                />
-                {admin && agendaProfessionals.length > 1 && (
-                  <label>
-                    Profissional
-                    <select
-                      value={agendaPerson}
-                      onChange={(e) => {
-                        setPerson(e.target.value);
-                        setExpandedAppointment(null);
-                      }}
-                    >
-                      <option>Todos</option>
-                      {agendaProfessionals.map((p) => (
-                        <option key={p}>{p}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                <div
-                  className="agenda-view-switch"
-                  role="group"
-                  aria-label="Visualização da agenda"
-                >
-                  <button
-                    aria-pressed={agendaView === "list"}
-                    onClick={() => setAgendaView("list")}
-                  >
-                    Lista
-                  </button>
-                  <button
-                    aria-pressed={agendaView === "stack"}
-                    onClick={() => setAgendaView("stack")}
-                  >
-                    Pilha
-                  </button>
+                        ? "Recebido menos repasses dos serviços pagos. Custos, taxas e despesas não estão cadastrados. Este saldo não representa lucro."
+                        : "Valores de demonstração, sem processamento de pagamentos."}
+                    </p>
+                  </section>
                 </div>
-              </section>
-              <section className="panel">
-                <div className="panel-head">
-                  <h2>
-                    {admin
-                      ? agendaPerson !== "Todos"
-                        ? `Agenda de ${agendaPerson}`
-                        : "Agenda do estabelecimento"
-                      : "Minha agenda"}
-                  </h2>
-                  <span className="badge blue">
-                    {agendaItems.length} atendimentos ·{" "}
-                    {periodLabel(agendaPeriod, date)}
-                  </span>
-                </div>
-                {agendaProfessionals.length === 0 ? (
-                  <div className="empty">
-                    Cadastre um profissional para visualizar a agenda.
-                  </div>
-                ) : agendaView === "stack" && agendaPeriod !== "day" ? (
-                  <AgendaPeriod
-                    appointments={agendaVisible}
+              </>
+            )}
+            {page === "Agenda" && (
+              <>
+                <section className="toolbar">
+                  <PeriodControls
+                    label="da agenda"
                     period={agendaPeriod}
                     date={date}
-                    onOpen={(value, period) => {
+                    onPeriod={(value) => {
+                      setAgendaPeriod(value);
+                      setExpandedAppointment(null);
+                    }}
+                    onDate={(value) => {
                       setDate(value);
-                      setAgendaPeriod(period);
                       setExpandedAppointment(null);
                     }}
                   />
-                ) : agendaView === "stack" ? (
-                  <>
-                    <div
-                      className="agenda-legend"
-                      aria-label="Cores dos status"
+                  {admin && agendaProfessionals.length > 1 && (
+                    <label>
+                      Profissional
+                      <select
+                        value={agendaPerson}
+                        onChange={(e) => {
+                          setPerson(e.target.value);
+                          setExpandedAppointment(null);
+                        }}
+                      >
+                        <option>Todos</option>
+                        {agendaProfessionals.map((p) => (
+                          <option key={p}>{p}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                  <div
+                    className="agenda-view-switch"
+                    role="group"
+                    aria-label="Visualização da agenda"
+                  >
+                    <button
+                      aria-pressed={agendaView === "list"}
+                      onClick={() => setAgendaView("list")}
                     >
-                      {[
-                        "Agendado",
-                        "Confirmado",
-                        "Concluído",
-                        "Não compareceu",
-                      ].map((status) => (
-                        <span
-                          className={`stack-tone-${agendaStatusTone(status)}`}
-                          key={status}
-                        >
-                          <i />
-                          {status}
-                        </span>
-                      ))}
+                      Lista
+                    </button>
+                    <button
+                      aria-pressed={agendaView === "stack"}
+                      onClick={() => setAgendaView("stack")}
+                    >
+                      Pilha
+                    </button>
+                  </div>
+                </section>
+                <section className="panel">
+                  <div className="panel-head">
+                    <h2>
+                      {admin
+                        ? agendaPerson !== "Todos"
+                          ? `Agenda de ${agendaPerson}`
+                          : "Agenda do estabelecimento"
+                        : "Minha agenda"}
+                    </h2>
+                    <span className="badge blue">
+                      {agendaItems.length} atendimentos ·{" "}
+                      {periodLabel(agendaPeriod, date)}
+                    </span>
+                  </div>
+                  {agendaProfessionals.length === 0 ? (
+                    <div className="empty">
+                      Cadastre um profissional para visualizar a agenda.
                     </div>
-                    <p className="stack-help">
-                      Toque em um atendimento para ver as ações. Horários
-                      locais.
-                    </p>
-                    <AgendaStack
-                      appointments={agendaItems}
-                      allAppointments={appointments}
-                      procedures={procedures}
-                      schedules={workingSchedules}
+                  ) : agendaView === "stack" && agendaPeriod !== "day" ? (
+                    <AgendaPeriod
+                      appointments={agendaVisible}
+                      period={agendaPeriod}
                       date={date}
-                      laneNames={
-                        agendaPerson === "Todos"
-                          ? agendaProfessionals
-                          : [agendaPerson]
-                      }
-                      admin={admin}
-                      expanded={expandedAppointment}
-                      onExpand={setExpandedAppointment}
-                      onMove={(appointment, time) =>
-                        moveAppointment(appointment, date, time)
-                      }
-                      onReschedule={setRescheduleTarget}
-                      renderReminder={renderReminder}
-                      renderDetails={(appointment) =>
-                        appointmentRows([appointment], true)
-                      }
+                      onOpen={(value, period) => {
+                        setDate(value);
+                        setAgendaPeriod(period);
+                        setExpandedAppointment(null);
+                      }}
                     />
-                  </>
-                ) : (
-                  appointmentRows(
-                    [...agendaItems].sort(
-                      (a, b) =>
-                        a.date.localeCompare(b.date) ||
-                        a.time.localeCompare(b.time),
-                    ),
-                    true,
-                  )
-                )}
-              </section>
-            </>
-          )}
-          {page === "Clientes" && admin && (
-            <>
-              <section className="campaign-banner">
-                <div className="alert-icon">
-                  <MessageSquare />
-                </div>
-                <div>
-                  <h2>Contato manual pelo WhatsApp</h2>
-                  <p>
-                    Revise a mensagem e abra o WhatsApp. O envio é confirmado
-                    por você, sem automação.
-                  </p>
-                </div>
-                <span className="badge blue">Envio manual</span>
-              </section>
-              {admin && (
-                <ContactImport
-                  clients={clients}
-                  onImport={async (contacts, onProgress) => {
-                    if (cloudSession) await cloudSession.store.waitForIdle();
-                    let local = clients;
-                    const count = await importContactBatches(
-                      contacts,
-                      () =>
-                        cloudSession
-                          ? ((cloudSession.store.values.get(
-                              "clients",
-                            ) as Client[]) ?? [])
-                          : local,
-                      async (added) => {
-                        if (cloudSession) {
-                          const latest =
-                            (cloudSession.store.values.get(
-                              "clients",
-                            ) as Client[]) ?? [];
-                          cloudSession.store.change("clients", [
-                            ...latest,
-                            ...added,
-                          ]);
-                          await cloudSession.store.waitForIdle();
-                        } else {
-                          local = [...local, ...added];
-                          setClients(local);
+                  ) : agendaView === "stack" ? (
+                    <>
+                      <div
+                        className="agenda-legend"
+                        aria-label="Cores dos status"
+                      >
+                        {[
+                          "Agendado",
+                          "Confirmado",
+                          "Concluído",
+                          "Não compareceu",
+                        ].map((status) => (
+                          <span
+                            className={`stack-tone-${agendaStatusTone(status)}`}
+                            key={status}
+                          >
+                            <i />
+                            {status}
+                          </span>
+                        ))}
+                      </div>
+                      <p className="stack-help">
+                        Toque em um atendimento para ver as ações. Horários
+                        locais.
+                      </p>
+                      <AgendaStack
+                        appointments={agendaItems}
+                        allAppointments={appointments}
+                        procedures={procedures}
+                        schedules={workingSchedules}
+                        date={date}
+                        laneNames={
+                          agendaPerson === "Todos"
+                            ? agendaProfessionals
+                            : [agendaPerson]
                         }
-                      },
-                      onProgress,
-                    );
-                    setToast(`${count} cliente(s) importado(s).`);
+                        admin={admin}
+                        expanded={expandedAppointment}
+                        onExpand={setExpandedAppointment}
+                        onMove={(appointment, time) =>
+                          moveAppointment(appointment, date, time)
+                        }
+                        onReschedule={setRescheduleTarget}
+                        renderReminder={renderReminder}
+                        renderDetails={(appointment) =>
+                          appointmentRows([appointment], true)
+                        }
+                      />
+                    </>
+                  ) : (
+                    appointmentRows(
+                      [...agendaItems].sort(
+                        (a, b) =>
+                          a.date.localeCompare(b.date) ||
+                          a.time.localeCompare(b.time),
+                      ),
+                      true,
+                    )
+                  )}
+                </section>
+              </>
+            )}
+            {page === "Clientes" && admin && (
+              <>
+                <section className="campaign-banner">
+                  <div className="alert-icon">
+                    <MessageSquare />
+                  </div>
+                  <div>
+                    <h2>Contato manual pelo WhatsApp</h2>
+                    <p>
+                      Revise a mensagem e abra o WhatsApp. O envio é confirmado
+                      por você, sem automação.
+                    </p>
+                  </div>
+                  <span className="badge blue">Envio manual</span>
+                </section>
+                {admin && (
+                  <ContactImport
+                    clients={clients}
+                    onImport={async (contacts, onProgress) => {
+                      if (cloudSession) await cloudSession.store.waitForIdle();
+                      let local = clients;
+                      const count = await importContactBatches(
+                        contacts,
+                        () =>
+                          cloudSession
+                            ? ((cloudSession.store.values.get(
+                                "clients",
+                              ) as Client[]) ?? [])
+                            : local,
+                        async (added) => {
+                          if (cloudSession) {
+                            const latest =
+                              (cloudSession.store.values.get(
+                                "clients",
+                              ) as Client[]) ?? [];
+                            cloudSession.store.change("clients", [
+                              ...latest,
+                              ...added,
+                            ]);
+                            await cloudSession.store.waitForIdle();
+                          } else {
+                            local = [...local, ...added];
+                            setClients(local);
+                          }
+                        },
+                        onProgress,
+                      );
+                      setToast(`${count} cliente(s) importado(s).`);
+                    }}
+                  />
+                )}
+                <ClientsPanel
+                  clients={clients}
+                  appointments={appointments}
+                  campaigns={campaigns}
+                  returnDays={returnDays}
+                  onEdit={(client) => {
+                    setEditingClient(client);
+                    setModal("client");
                   }}
+                  onDelete={(id) => {
+                    setClients(deleteClient(clients, id, role!));
+                    setToast(
+                      "Cliente excluído do cadastro ativo. Histórico preservado.",
+                    );
+                  }}
+                  onRestore={(id) => {
+                    setClients(restoreClient(clients, id, role!));
+                    setToast("Cliente restaurado.");
+                  }}
+                  onWhatsApp={openWhatsAppPreview}
                 />
-              )}
-              <ClientsPanel
+              </>
+            )}
+            {page === "Financeiro" && (
+              <FinancePage
+                appointments={visible}
                 clients={clients}
+                establishmentName={establishmentName}
+                admin={admin}
+                onPayment={(id) => {
+                  const appointment = visible.find((a) => a.id === id);
+                  if (appointment?.status === "Concluído")
+                    setCompletionAppointment(appointment);
+                }}
+              />
+            )}
+            {page === "Métricas" && admin && (
+              <MetricsPage
                 appointments={appointments}
-                campaigns={campaigns}
-                returnDays={returnDays}
-                onEdit={(client) => {
-                  setEditingClient(client);
-                  setModal("client");
+                procedures={procedures}
+                schedules={workingSchedules}
+                names={professionals}
+                activeNames={activeProfessionals}
+                presence={presence}
+                now={presenceNow}
+                establishmentName={establishmentName}
+              />
+            )}
+            {page === "Profissionais" && admin && (
+              <ProfessionalsPanel
+                records={records}
+                procedures={procedures}
+                schedules={schedules}
+                appointments={appointments}
+                onCreate={(name) => {
+                  const created = createProfessional(
+                    records,
+                    name,
+                    Date.now(),
+                    role!,
+                  );
+                  setRecords((items) => [
+                    ...items.map((record) =>
+                      activeProfessionals.length === 1 &&
+                      record.active &&
+                      !record.deletedAt
+                        ? {
+                            ...record,
+                            services: professionalServices(
+                              record,
+                              procedures,
+                              true,
+                            ),
+                          }
+                        : record,
+                    ),
+                    created,
+                  ]);
+                  setSchedules((items) => [
+                    ...items,
+                    defaultSchedule(created.name),
+                  ]);
+                  setToast(
+                    "Profissional cadastrado. Configure seus procedimentos e repasses.",
+                  );
+                }}
+                onUpdate={(updated) => {
+                  setRecords(updateProfessional(records, updated, role!));
+                  setToast("Configuração do profissional salva.");
                 }}
                 onDelete={(id) => {
-                  setClients(deleteClient(clients, id, role!));
-                  setToast(
-                    "Cliente excluído do cadastro ativo. Histórico preservado.",
-                  );
+                  setRecords(deleteProfessional(records, id, role!));
+                  setToast("Profissional excluído. Histórico preservado.");
                 }}
                 onRestore={(id) => {
-                  setClients(restoreClient(clients, id, role!));
-                  setToast("Cliente restaurado.");
+                  setRecords(restoreProfessional(records, id, role!));
+                  setToast("Profissional restaurado como desabilitado.");
                 }}
-                onWhatsApp={openWhatsAppPreview}
-              />
-            </>
-          )}
-          {page === "Financeiro" && (
-            <FinancePage
-              appointments={visible}
-              clients={clients}
-              establishmentName={establishmentName}
-              admin={admin}
-              onPayment={(id) => {
-                const appointment = visible.find((a) => a.id === id);
-                if (appointment?.status === "Concluído")
-                  setCompletionAppointment(appointment);
-              }}
-            />
-          )}
-          {page === "Métricas" && admin && (
-            <MetricsPage
-              appointments={appointments}
-              procedures={procedures}
-              schedules={workingSchedules}
-              names={professionals}
-              activeNames={activeProfessionals}
-              presence={presence}
-              now={presenceNow}
-              establishmentName={establishmentName}
-            />
-          )}
-          {page === "Profissionais" && admin && (
-            <ProfessionalsPanel
-              records={records}
-              procedures={procedures}
-              schedules={schedules}
-              appointments={appointments}
-              onCreate={(name) => {
-                const created = createProfessional(
-                  records,
-                  name,
-                  Date.now(),
-                  role!,
-                );
-                setRecords((items) => [
-                  ...items.map((record) =>
-                    activeProfessionals.length === 1 &&
-                    record.active &&
-                    !record.deletedAt
-                      ? {
-                          ...record,
-                          services: professionalServices(
-                            record,
-                            procedures,
-                            true,
-                          ),
-                        }
-                      : record,
-                  ),
-                  created,
-                ]);
-                setSchedules((items) => [
-                  ...items,
-                  defaultSchedule(created.name),
-                ]);
-                setToast(
-                  "Profissional cadastrado. Configure seus procedimentos e repasses.",
-                );
-              }}
-              onUpdate={(updated) => {
-                setRecords(updateProfessional(records, updated, role!));
-                setToast("Configuração do profissional salva.");
-              }}
-              onDelete={(id) => {
-                setRecords(deleteProfessional(records, id, role!));
-                setToast("Profissional excluído. Histórico preservado.");
-              }}
-              onRestore={(id) => {
-                setRecords(restoreProfessional(records, id, role!));
-                setToast("Profissional restaurado como desabilitado.");
-              }}
-              onSchedule={(updated) => {
-                if (admin)
-                  setSchedules((items) =>
-                    items.map((s) =>
-                      s.professional === updated.professional ? updated : s,
-                    ),
-                  );
-              }}
-            />
-          )}
-          {page === "Procedimentos" && (
-            <>
-              <div className="notice">
-                <ClipboardList size={20} />
-                <span>
-                  {admin
-                    ? "Cadastre e edite nome, duração e valor. As alterações valem para novos atendimentos; os anteriores preservam os dados combinados."
-                    : "Seus procedimentos habilitados, com os valores definidos pelo estabelecimento."}
-                </span>
-              </div>
-              <div className="procedure-grid">
-                {procedures
-                  .filter(
-                    (p) =>
-                      admin ||
-                      bookingProcedures
-                        .find((proc) => proc.id === p.id)
-                        ?.professionals?.includes(currentProfessional),
-                  )
-                  .map((p) => (
-                    <section className="panel procedure" key={p.id}>
-                      <div className="procedure-top">
-                        <span className="service-icon">
-                          <ClipboardList size={22} />
-                        </span>
-                      </div>
-                      <h2>{p.name}</h2>
-                      <p>
-                        <Clock size={14} />
-                        {p.duration} minutos
-                      </p>
-                      <strong className="price">{money(p.price)}</strong>
-                      {admin && (
-                        <button
-                          className="secondary wide procedure-edit"
-                          onClick={() => {
-                            setEditingProcedure(p);
-                            setModal("procedure");
-                          }}
-                        >
-                          Editar procedimento
-                          <ChevronRight size={16} />
-                        </button>
-                      )}
-                    </section>
-                  ))}
-              </div>
-            </>
-          )}
-          {page === "Configurações" && !admin && (
-            <section className="panel settings">
-              <h2>Minha jornada e ausências</h2>
-              <p>Configure somente a sua disponibilidade demonstrativa.</p>
-              <WorkScheduleEditor
-                schedule={schedules.find(
-                  (s) => s.professional === currentProfessional,
-                )!}
-                onSave={(updated) =>
-                  setSchedules((items) =>
-                    items.map((s) =>
-                      s.professional === currentProfessional
-                        ? { ...updated, professional: currentProfessional }
-                        : s,
-                    ),
-                  )
-                }
-                appointments={visible}
-                procedures={procedures}
-              />
-            </section>
-          )}
-          {page === "Configurações" && admin && (
-            <SettingsPage
-              name={establishmentName}
-              returnDays={returnDays}
-              onReturnDays={(value) => {
-                setReturnDays(normalizeReturnDays(value));
-                setToast("Prazo de retorno salvo.");
-              }}
-              message={message}
-              appointmentTemplate={appointmentTemplate}
-              appearance={appearance}
-              logo={logo}
-              onLogo={(value) => {
-                try {
-                  if (!isCloud)
-                    localStorage.setItem(
-                      storageKey("navalha-v01-logo"),
-                      JSON.stringify(value),
+                onSchedule={(updated) => {
+                  if (admin)
+                    setSchedules((items) =>
+                      items.map((s) =>
+                        s.professional === updated.professional ? updated : s,
+                      ),
                     );
-                } catch {
-                  throw new Error(
-                    "Sem espaço neste navegador para salvar a logo. Tente uma imagem menor.",
-                  );
-                }
-                setLogo(value);
-                setToast(value ? "Logo salva." : "Logo removida.");
-              }}
-              onAppearance={setAppearance}
-              onName={(value) => {
-                setEstablishmentName(value);
-                setToast("Nome do estabelecimento salvo.");
-              }}
-              onReturn={(value) => {
-                setMessage(value);
-                setToast("Lembrete de retorno salvo.");
-              }}
-              onAppointment={(value) => {
-                setAppointmentTemplate(value);
-                setToast("Lembrete de agendamento salvo.");
-              }}
-            />
-          )}
+                }}
+              />
+            )}
+            {page === "Procedimentos" && (
+              <>
+                <div className="notice">
+                  <ClipboardList size={20} />
+                  <span>
+                    {admin
+                      ? "Cadastre e edite nome, duração e valor. As alterações valem para novos atendimentos; os anteriores preservam os dados combinados."
+                      : "Seus procedimentos habilitados, com os valores definidos pelo estabelecimento."}
+                  </span>
+                </div>
+                <div className="procedure-grid">
+                  {procedures
+                    .filter(
+                      (p) =>
+                        admin ||
+                        bookingProcedures
+                          .find((proc) => proc.id === p.id)
+                          ?.professionals?.includes(currentProfessional),
+                    )
+                    .map((p) => (
+                      <section className="panel procedure" key={p.id}>
+                        <div className="procedure-top">
+                          <span className="service-icon">
+                            <ClipboardList size={22} />
+                          </span>
+                        </div>
+                        <h2>{p.name}</h2>
+                        <p>
+                          <Clock size={14} />
+                          {p.duration} minutos
+                        </p>
+                        <strong className="price">{money(p.price)}</strong>
+                        {admin && (
+                          <button
+                            className="secondary wide procedure-edit"
+                            onClick={() => {
+                              setEditingProcedure(p);
+                              setModal("procedure");
+                            }}
+                          >
+                            Editar procedimento
+                            <ChevronRight size={16} />
+                          </button>
+                        )}
+                      </section>
+                    ))}
+                </div>
+              </>
+            )}
+            {page === "Configurações" && !admin && (
+              <section className="panel settings">
+                <h2>Minha jornada e ausências</h2>
+                <p>Configure somente a sua disponibilidade demonstrativa.</p>
+                <WorkScheduleEditor
+                  schedule={
+                    schedules.find(
+                      (s) => s.professional === currentProfessional,
+                    )!
+                  }
+                  onSave={(updated) =>
+                    setSchedules((items) =>
+                      items.map((s) =>
+                        s.professional === currentProfessional
+                          ? { ...updated, professional: currentProfessional }
+                          : s,
+                      ),
+                    )
+                  }
+                  appointments={visible}
+                  procedures={procedures}
+                />
+              </section>
+            )}
+            {page === "Configurações" && admin && (
+              <SettingsPage
+                name={establishmentName}
+                returnDays={returnDays}
+                onReturnDays={(value) => {
+                  setReturnDays(normalizeReturnDays(value));
+                  setToast("Prazo de retorno salvo.");
+                }}
+                message={message}
+                appointmentTemplate={appointmentTemplate}
+                appearance={appearance}
+                logo={logo}
+                onLogo={(value) => {
+                  try {
+                    if (!isCloud)
+                      localStorage.setItem(
+                        storageKey("navalha-v01-logo"),
+                        JSON.stringify(value),
+                      );
+                  } catch {
+                    throw new Error(
+                      "Sem espaço neste navegador para salvar a logo. Tente uma imagem menor.",
+                    );
+                  }
+                  setLogo(value);
+                  setToast(value ? "Logo salva." : "Logo removida.");
+                }}
+                onAppearance={setAppearance}
+                onName={(value) => {
+                  setEstablishmentName(value);
+                  setToast("Nome do estabelecimento salvo.");
+                }}
+                onReturn={(value) => {
+                  setMessage(value);
+                  setToast("Lembrete de retorno salvo.");
+                }}
+                onAppointment={(value) => {
+                  setAppointmentTemplate(value);
+                  setToast("Lembrete de agendamento salvo.");
+                }}
+              />
+            )}
+          </CloudDataBoundary>
           <footer>
             <a href="/manual.html" target="_blank" rel="noopener noreferrer">
               Manual do usuário
@@ -1864,395 +1847,413 @@ export default function App() {
             <X />
           </button>
         </div>
-        {rescheduleTarget ? (
-          <form
-            className="modal-body"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const data = new FormData(event.currentTarget);
-              if (
-                moveAppointment(
-                  rescheduleTarget,
-                  String(data.get("rescheduleDate")),
-                  String(data.get("rescheduleTime")),
-                )
-              )
-                close();
-            }}
+        {(modal ||
+          campaignClient ||
+          completionAppointment ||
+          rescheduleTarget) && (
+          <CloudDataBoundary
+            keys={
+              modal === "procedure"
+                ? pageCloudKeys.Procedimentos
+                : modal === "client" || campaignClient
+                  ? [...pageCloudKeys.Clientes, ...appointmentCloudKeys]
+                  : appointmentCloudKeys
+            }
           >
-            <p>
-              <strong>{rescheduleTarget.client}</strong>
-              <br />
-              {rescheduleTarget.procedure} · {rescheduleTarget.professional}
-              <br />
-              Horário atual:{" "}
-              {rescheduleTarget.date.split("-").reverse().join("/")} às{" "}
-              {rescheduleTarget.time}
-            </p>
-            {formError && (
-              <div className="form-error" role="alert">
-                {formError}
-              </div>
-            )}
-            <RescheduleFields
-              appointment={rescheduleTarget}
-              appointments={appointments}
-              procedures={bookingProcedures}
-              schedules={workingSchedules}
-            />
-            <small>
-              Intervalos de 15 minutos. O profissional, o procedimento, o valor,
-              o status e o pagamento são mantidos. Conflitos bloqueiam a
-              alteração.
-            </small>
-            <div className="modal-actions">
-              <button className="secondary" type="button" onClick={close}>
-                Cancelar
-              </button>
-              <button className="primary" type="submit">
-                Salvar novo horário
-              </button>
-            </div>
-          </form>
-        ) : completionAppointment ? (
-          <div className="modal-body">
-            <p>
-              <strong>{completionAppointment.client}</strong>
-              <br />
-              {completionAppointment.procedure} ·{" "}
-              {money(completionAppointment.value)}
-            </p>
-            <p>
-              {completionAppointment.status === "Concluído"
-                ? "Atualize a forma de pagamento deste atendimento. O valor será registrado integralmente, sem criar outro atendimento."
-                : "Escolha uma opção para concluir o atendimento e registrar o pagamento integral."}
-            </p>
-            <div className="payment-options">
-              {[...paymentMethods, "Não pago"].map((option) => (
-                <button
-                  key={option}
-                  className={`payment-option payment-${[...paymentMethods, "Não pago"].indexOf(option)}`}
-                  onClick={() => {
-                    const method = option === "Não pago" ? "" : option;
-                    setAppointments((items) =>
-                      items.map((item) =>
-                        item.id === completionAppointment.id
-                          ? completeAppointment(item, method)
-                          : item,
-                      ),
-                    );
-                    const completedAt = new Date().toISOString();
-                    setClients((items) =>
-                      items.map((client) =>
-                        completeClientVisit(
-                          client,
-                          completionAppointment,
-                          completedAt,
-                        ),
-                      ),
-                    );
+            {rescheduleTarget ? (
+              <form
+                className="modal-body"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  if (
+                    moveAppointment(
+                      rescheduleTarget,
+                      String(data.get("rescheduleDate")),
+                      String(data.get("rescheduleTime")),
+                    )
+                  )
                     close();
+                }}
+              >
+                <p>
+                  <strong>{rescheduleTarget.client}</strong>
+                  <br />
+                  {rescheduleTarget.procedure} · {rescheduleTarget.professional}
+                  <br />
+                  Horário atual:{" "}
+                  {rescheduleTarget.date.split("-").reverse().join("/")} às{" "}
+                  {rescheduleTarget.time}
+                </p>
+                {formError && (
+                  <div className="form-error" role="alert">
+                    {formError}
+                  </div>
+                )}
+                <RescheduleFields
+                  appointment={rescheduleTarget}
+                  appointments={appointments}
+                  procedures={bookingProcedures}
+                  schedules={workingSchedules}
+                />
+                <small>
+                  Intervalos de 15 minutos. O profissional, o procedimento, o
+                  valor, o status e o pagamento são mantidos. Conflitos
+                  bloqueiam a alteração.
+                </small>
+                <div className="modal-actions">
+                  <button className="secondary" type="button" onClick={close}>
+                    Cancelar
+                  </button>
+                  <button className="primary" type="submit">
+                    Salvar novo horário
+                  </button>
+                </div>
+              </form>
+            ) : completionAppointment ? (
+              <div className="modal-body">
+                <p>
+                  <strong>{completionAppointment.client}</strong>
+                  <br />
+                  {completionAppointment.procedure} ·{" "}
+                  {money(completionAppointment.value)}
+                </p>
+                <p>
+                  {completionAppointment.status === "Concluído"
+                    ? "Atualize a forma de pagamento deste atendimento. O valor será registrado integralmente, sem criar outro atendimento."
+                    : "Escolha uma opção para concluir o atendimento e registrar o pagamento integral."}
+                </p>
+                <div className="payment-options">
+                  {[...paymentMethods, "Não pago"].map((option) => (
+                    <button
+                      key={option}
+                      className={`payment-option payment-${[...paymentMethods, "Não pago"].indexOf(option)}`}
+                      onClick={() => {
+                        const method = option === "Não pago" ? "" : option;
+                        setAppointments((items) =>
+                          items.map((item) =>
+                            item.id === completionAppointment.id
+                              ? completeAppointment(item, method)
+                              : item,
+                          ),
+                        );
+                        const completedAt = new Date().toISOString();
+                        setClients((items) =>
+                          items.map((client) =>
+                            completeClientVisit(
+                              client,
+                              completionAppointment,
+                              completedAt,
+                            ),
+                          ),
+                        );
+                        close();
+                        setToast(
+                          option === "Não pago"
+                            ? "Atendimento concluído com pagamento pendente."
+                            : `Atendimento concluído. Pagamento em ${option} registrado manualmente.`,
+                        );
+                      }}
+                    >
+                      {option === "Dinheiro" ? (
+                        <Banknote size={23} />
+                      ) : option === "Pix" ? (
+                        <QrCode size={23} />
+                      ) : option === "Não pago" ? (
+                        <CircleAlert size={23} />
+                      ) : (
+                        <CreditCard size={23} />
+                      )}
+                      {option}
+                    </button>
+                  ))}
+                </div>
+                <small>
+                  {isCloud
+                    ? "Registro manual no banco. Nenhuma cobrança é processada."
+                    : "Registro demonstrativo local. Nenhuma cobrança é processada."}
+                </small>
+                <button className="text-button" onClick={close}>
+                  Cancelar e voltar à agenda
+                </button>
+              </div>
+            ) : campaignClient ? (
+              <div className="modal-body">
+                <p>
+                  <strong>{campaignClient.name}</strong>
+                  <br />
+                  {campaignClient.phone}
+                </p>
+                <label>
+                  Mensagem para o WhatsApp
+                  <textarea
+                    rows={5}
+                    value={whatsappDraft}
+                    onChange={(event) => {
+                      whatsappClicked.current = false;
+                      setWhatsappDraft(event.target.value);
+                    }}
+                  />
+                </label>
+                {whatsappError && (
+                  <div className="form-error" role="alert">
+                    {whatsappError}
+                  </div>
+                )}
+                {whatsappRepeat && (
+                  <div className="schedule-notice" role="status">
+                    Esta mesma mensagem já teve abertura solicitada para este
+                    cliente nos últimos 7 dias. O aplicativo não confirma se ela
+                    foi enviada.
+                  </div>
+                )}
+                <p className="availability-note">
+                  Você será direcionado ao WhatsApp com o texto pronto. Revise o
+                  destinatário e toque em Enviar no WhatsApp. Nada é enviado
+                  automaticamente.
+                </p>
+                <a
+                  className={`primary wide whatsapp-link ${!whatsappAllowed ? "is-disabled" : ""}`}
+                  href={whatsappURL || undefined}
+                  tabIndex={whatsappAllowed ? 0 : -1}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-disabled={!whatsappAllowed}
+                  onClick={(event) => {
+                    if (
+                      !whatsappAllowed ||
+                      !campaignClient ||
+                      whatsappClicked.current
+                    ) {
+                      event.preventDefault();
+                      return;
+                    }
+                    whatsappClicked.current = true;
+                    const openedAt = new Date().toISOString();
+                    setCampaigns((items) => [
+                      ...items,
+                      {
+                        clientId: campaignClient.id,
+                        status: "opened",
+                        created: openedAt,
+                        openedAt,
+                        message: whatsappDraft.trim(),
+                        cycleResetAt: campaignClient.reminderResetAt ?? "",
+                      },
+                    ]);
                     setToast(
-                      option === "Não pago"
-                        ? "Atendimento concluído com pagamento pendente."
-                        : `Atendimento concluído. Pagamento em ${option} registrado manualmente.`,
+                      "Abertura do WhatsApp solicitada. O envio precisa ser feito no WhatsApp.",
                     );
                   }}
                 >
-                  {option === "Dinheiro" ? (
-                    <Banknote size={23} />
-                  ) : option === "Pix" ? (
-                    <QrCode size={23} />
-                  ) : option === "Não pago" ? (
-                    <CircleAlert size={23} />
-                  ) : (
-                    <CreditCard size={23} />
-                  )}
-                  {option}
-                </button>
-              ))}
-            </div>
-            <small>
-              {isCloud
-                ? "Registro manual no banco. Nenhuma cobrança é processada."
-                : "Registro demonstrativo local. Nenhuma cobrança é processada."}
-            </small>
-            <button className="text-button" onClick={close}>
-              Cancelar e voltar à agenda
-            </button>
-          </div>
-        ) : campaignClient ? (
-          <div className="modal-body">
-            <p>
-              <strong>{campaignClient.name}</strong>
-              <br />
-              {campaignClient.phone}
-            </p>
-            <label>
-              Mensagem para o WhatsApp
-              <textarea
-                rows={5}
-                value={whatsappDraft}
-                onChange={(event) => {
-                  whatsappClicked.current = false;
-                  setWhatsappDraft(event.target.value);
-                }}
-              />
-            </label>
-            {whatsappError && (
-              <div className="form-error" role="alert">
-                {whatsappError}
+                  <MessageSquare size={18} />
+                  Abrir no WhatsApp
+                </a>
+                <small>
+                  Proteção local contra repetição do mesmo texto por 7 dias.
+                  Registra apenas a solicitação de abertura, sem confirmação de
+                  envio.
+                </small>
               </div>
-            )}
-            {whatsappRepeat && (
-              <div className="schedule-notice" role="status">
-                Esta mesma mensagem já teve abertura solicitada para este
-                cliente nos últimos 7 dias. O aplicativo não confirma se ela foi
-                enviada.
-              </div>
-            )}
-            <p className="availability-note">
-              Você será direcionado ao WhatsApp com o texto pronto. Revise o
-              destinatário e toque em Enviar no WhatsApp. Nada é enviado
-              automaticamente.
-            </p>
-            <a
-              className={`primary wide whatsapp-link ${!whatsappAllowed ? "is-disabled" : ""}`}
-              href={whatsappURL || undefined}
-              tabIndex={whatsappAllowed ? 0 : -1}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-disabled={!whatsappAllowed}
-              onClick={(event) => {
-                if (
-                  !whatsappAllowed ||
-                  !campaignClient ||
-                  whatsappClicked.current
-                ) {
-                  event.preventDefault();
-                  return;
-                }
-                whatsappClicked.current = true;
-                const openedAt = new Date().toISOString();
-                setCampaigns((items) => [
-                  ...items,
-                  {
-                    clientId: campaignClient.id,
-                    status: "opened",
-                    created: openedAt,
-                    openedAt,
-                    message: whatsappDraft.trim(),
-                    cycleResetAt: campaignClient.reminderResetAt ?? "",
-                  },
-                ]);
-                setToast(
-                  "Abertura do WhatsApp solicitada. O envio precisa ser feito no WhatsApp.",
-                );
-              }}
-            >
-              <MessageSquare size={18} />
-              Abrir no WhatsApp
-            </a>
-            <small>
-              Proteção local contra repetição do mesmo texto por 7 dias.
-              Registra apenas a solicitação de abertura, sem confirmação de
-              envio.
-            </small>
-          </div>
-        ) : (
-          <form className="modal-body" onSubmit={save}>
-            {formError && (
-              <div className="form-error" role="alert">
-                {formError}
-              </div>
-            )}
-            {modal === "appointment" ? (
-              <AppointmentFields
-                appointments={appointments}
-                procedures={bookingProcedures}
-                schedules={workingSchedules}
-                professionalNames={activeProfessionals}
-                currentProfessional={currentProfessional}
-                clients={
-                  admin
-                    ? clients.filter((c) => !c.deletedAt)
-                    : clients.filter(
-                        (c) =>
-                          !c.deletedAt &&
-                          visible.some((a) => a.client === c.name),
-                      )
-                }
-                admin={admin}
-                initialDate={date}
-              />
-            ) : modal === "client" ? (
-              <>
-                <label>
-                  Nome completo
-                  <input
-                    name="name"
-                    defaultValue={editingClient?.name ?? ""}
-                    required
-                    maxLength={80}
-                  />
-                </label>
-                <label>
-                  {isCloud ? "Telefone com DDD" : "Telefone demonstrativo"}
-                  <input
-                    name="phone"
-                    defaultValue={editingClient?.phone ?? ""}
-                    required
-                    type="tel"
-                    maxLength={22}
-                  />
-                </label>
-                <label>
-                  CPF ou CNPJ (opcional)
-                  <input
-                    name="document"
-                    defaultValue={editingClient?.document ?? ""}
-                    inputMode="numeric"
-                    maxLength={18}
-                    placeholder="11 dígitos para CPF ou 14 para CNPJ"
-                  />
-                </label>
-                <label>
-                  Último atendimento (se houver)
-                  <input
-                    name="lastVisit"
-                    type="date"
-                    max={TODAY}
-                    defaultValue={editingClient?.lastVisit ?? TODAY}
-                  />
-                </label>
-                <label className="check-row">
-                  <input
-                    type="checkbox"
-                    name="consent"
-                    defaultChecked={editingClient?.consent ?? false}
-                  />
-                  {isCloud
-                    ? "Autorizou receber lembretes"
-                    : "Autorizou receber lembretes (registro demonstrativo)"}
-                </label>
-              </>
             ) : (
-              <>
-                <label>
-                  Nome do procedimento
-                  <input
-                    name="name"
-                    defaultValue={editingProcedure?.name ?? ""}
-                    required
-                    maxLength={80}
+              <form className="modal-body" onSubmit={save}>
+                {formError && (
+                  <div className="form-error" role="alert">
+                    {formError}
+                  </div>
+                )}
+                {modal === "appointment" ? (
+                  <AppointmentFields
+                    appointments={appointments}
+                    procedures={bookingProcedures}
+                    schedules={workingSchedules}
+                    professionalNames={activeProfessionals}
+                    currentProfessional={currentProfessional}
+                    clients={
+                      admin
+                        ? clients.filter((c) => !c.deletedAt)
+                        : clients.filter(
+                            (c) =>
+                              !c.deletedAt &&
+                              visible.some((a) => a.client === c.name),
+                          )
+                    }
+                    admin={admin}
+                    initialDate={date}
                   />
-                </label>
-                <div className="form-row">
-                  <label>
-                    Preço (R$)
-                    <input
-                      name="price"
-                      defaultValue={editingProcedure?.price}
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </label>
-                </div>
-                <ProcedureDurationFields
-                  initialMinutes={editingProcedure?.duration}
-                />
-              </>
-            )}
-            {modal === "procedure" && editingProcedure && admin && (
-              <div className="procedure-delete">
-                {confirmProcedureDelete ? (
+                ) : modal === "client" ? (
                   <>
-                    <p>
-                      Excluir “{editingProcedure.name}” do catálogo? Os
-                      atendimentos existentes serão preservados.
-                    </p>
-                    <button
-                      type="button"
-                      className="secondary"
-                      onClick={() => setConfirmProcedureDelete(false)}
-                    >
-                      Manter procedimento
-                    </button>
-                    <button
-                      type="button"
-                      className="secondary danger"
-                      onClick={() => {
-                        setAppointments((items) =>
-                          items.map((a) =>
-                            !a.services?.length &&
-                            a.procedure === editingProcedure.name
-                              ? {
-                                  ...a,
-                                  duration: appointmentDuration(a, procedures),
-                                  services: [
-                                    {
-                                      procedureId: editingProcedure.id,
-                                      name: a.procedure,
+                    <label>
+                      Nome completo
+                      <input
+                        name="name"
+                        defaultValue={editingClient?.name ?? ""}
+                        required
+                        maxLength={80}
+                      />
+                    </label>
+                    <label>
+                      {isCloud ? "Telefone com DDD" : "Telefone demonstrativo"}
+                      <input
+                        name="phone"
+                        defaultValue={editingClient?.phone ?? ""}
+                        required
+                        type="tel"
+                        maxLength={22}
+                      />
+                    </label>
+                    <label>
+                      CPF ou CNPJ (opcional)
+                      <input
+                        name="document"
+                        defaultValue={editingClient?.document ?? ""}
+                        inputMode="numeric"
+                        maxLength={18}
+                        placeholder="11 dígitos para CPF ou 14 para CNPJ"
+                      />
+                    </label>
+                    <label>
+                      Último atendimento (se houver)
+                      <input
+                        name="lastVisit"
+                        type="date"
+                        max={TODAY}
+                        defaultValue={editingClient?.lastVisit ?? TODAY}
+                      />
+                    </label>
+                    <label className="check-row">
+                      <input
+                        type="checkbox"
+                        name="consent"
+                        defaultChecked={editingClient?.consent ?? false}
+                      />
+                      {isCloud
+                        ? "Autorizou receber lembretes"
+                        : "Autorizou receber lembretes (registro demonstrativo)"}
+                    </label>
+                  </>
+                ) : (
+                  <>
+                    <label>
+                      Nome do procedimento
+                      <input
+                        name="name"
+                        defaultValue={editingProcedure?.name ?? ""}
+                        required
+                        maxLength={80}
+                      />
+                    </label>
+                    <div className="form-row">
+                      <label>
+                        Preço (R$)
+                        <input
+                          name="price"
+                          defaultValue={editingProcedure?.price}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </label>
+                    </div>
+                    <ProcedureDurationFields
+                      initialMinutes={editingProcedure?.duration}
+                    />
+                  </>
+                )}
+                {modal === "procedure" && editingProcedure && admin && (
+                  <div className="procedure-delete">
+                    {confirmProcedureDelete ? (
+                      <>
+                        <p>
+                          Excluir “{editingProcedure.name}” do catálogo? Os
+                          atendimentos existentes serão preservados.
+                        </p>
+                        <button
+                          type="button"
+                          className="secondary"
+                          onClick={() => setConfirmProcedureDelete(false)}
+                        >
+                          Manter procedimento
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary danger"
+                          onClick={() => {
+                            setAppointments((items) =>
+                              items.map((a) =>
+                                !a.services?.length &&
+                                a.procedure === editingProcedure.name
+                                  ? {
+                                      ...a,
                                       duration: appointmentDuration(
                                         a,
                                         procedures,
                                       ),
-                                      price: a.value,
-                                      commissionRate: a.commissionRate,
-                                    },
-                                  ],
-                                }
-                              : a,
-                          ),
-                        );
-                        setRecords((items) =>
-                          items.map((record) => ({
-                            ...record,
-                            services: record.services.filter(
-                              (service) =>
-                                service.procedureId !== editingProcedure.id,
-                            ),
-                          })),
-                        );
-                        setProcedures((items) =>
-                          items.filter((p) => p.id !== editingProcedure.id),
-                        );
-                        close();
-                        setToast(
-                          "Procedimento excluído. Atendimentos preservados.",
-                        );
-                      }}
-                    >
-                      Confirmar exclusão
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="text-button danger"
-                    onClick={() => setConfirmProcedureDelete(true)}
-                  >
-                    Excluir procedimento
-                  </button>
+                                      services: [
+                                        {
+                                          procedureId: editingProcedure.id,
+                                          name: a.procedure,
+                                          duration: appointmentDuration(
+                                            a,
+                                            procedures,
+                                          ),
+                                          price: a.value,
+                                          commissionRate: a.commissionRate,
+                                        },
+                                      ],
+                                    }
+                                  : a,
+                              ),
+                            );
+                            setRecords((items) =>
+                              items.map((record) => ({
+                                ...record,
+                                services: record.services.filter(
+                                  (service) =>
+                                    service.procedureId !== editingProcedure.id,
+                                ),
+                              })),
+                            );
+                            setProcedures((items) =>
+                              items.filter((p) => p.id !== editingProcedure.id),
+                            );
+                            close();
+                            setToast(
+                              "Procedimento excluído. Atendimentos preservados.",
+                            );
+                          }}
+                        >
+                          Confirmar exclusão
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="text-button danger"
+                        onClick={() => setConfirmProcedureDelete(true)}
+                      >
+                        Excluir procedimento
+                      </button>
+                    )}
+                  </div>
                 )}
-              </div>
+                <div className="modal-actions">
+                  <button type="button" className="secondary" onClick={close}>
+                    Cancelar
+                  </button>
+                  <button className="primary" type="submit">
+                    Salvar{" "}
+                    {modal === "appointment"
+                      ? "atendimento"
+                      : modal === "client"
+                        ? "cliente"
+                        : "procedimento"}
+                  </button>
+                </div>
+              </form>
             )}
-            <div className="modal-actions">
-              <button type="button" className="secondary" onClick={close}>
-                Cancelar
-              </button>
-              <button className="primary" type="submit">
-                Salvar{" "}
-                {modal === "appointment"
-                  ? "atendimento"
-                  : modal === "client"
-                    ? "cliente"
-                    : "procedimento"}
-              </button>
-            </div>
-          </form>
+          </CloudDataBoundary>
         )}
       </dialog>
       {toast && (

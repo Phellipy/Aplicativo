@@ -4821,3 +4821,48 @@ textarea:focus-visible {
 .procedure-duration small {
   color: var(--muted);
 }
+
+.stack-view-toolbar { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.stack-view-toolbar > strong { margin-right: auto; }
+.agenda-stack-fullscreen { position: fixed; inset: 0; z-index: 1000; background: var(--surface); color: var(--text); padding: 12px; display: flex; flex-direction: column; gap: 8px; box-sizing: border-box; height: 100dvh; }
+.agenda-stack-fullscreen .stack-view-toolbar { flex-shrink: 0; margin: 0; }
+.agenda-stack-fullscreen .drag-instructions { margin: 0; flex-shrink: 0; }
+.agenda-stack-fullscreen .timeline-scroll { flex: 1; min-height: 0; max-height: none; }
+.agenda-stack-fullscreen .timeline-selected { flex-shrink: 0; max-height: 35dvh; overflow: auto; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-content { display: flex; justify-content: center; padding: 0 3px; gap: 0; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-heading { display: flex; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-client { font-size: 11px; line-height: 1.1; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-service,
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-footer,
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-time,
+.agenda-stack-fullscreen .timeline-fit-small .timeline-reminder { display: none; }
+@media (max-width: 600px) { .agenda-stack-fullscreen { padding: 8px; } .agenda-stack-fullscreen .drag-instructions { font-size: 10px; } .agenda-stack-fullscreen .stack-view-toolbar > strong { font-size: 12px; } }
+
+.timeline-axis .timeline-end-time { bottom: 0; padding-top: 0; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-content { flex-direction: row; align-items: center; gap: 6px; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-heading { flex: 1; min-width: 0; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-service { display: block; flex: 1; min-width: 0; font-size: 10px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-footer { display: flex; width: auto; flex-shrink: 0; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-status { display: none; }
+.agenda-stack-fullscreen .timeline-fit-small .timeline-event-value { font-size: 10px; }
+
+.stack-view-toolbar .stack-scale-toggle {
+  width: 154px;
+  min-width: 154px;
+  flex: 0 0 154px;
+  min-height: 44px;
+  white-space: nowrap;
+}
+
+.cloud-section-loading { padding: 20px; color: var(--muted); }
+.stack-scale-short, .stack-exit-short { display: none; }
+.agenda-stack-fullscreen .stack-view-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) 154px 170px; align-items: center; }
+.agenda-stack-fullscreen .stack-view-toolbar > strong { margin-right: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda-stack-fullscreen .stack-view-toolbar > button { width: 100%; min-width: 0; white-space: nowrap; }
+@media (max-width: 600px) {
+  .agenda-stack-fullscreen .stack-view-toolbar { grid-template-columns: minmax(0, 1fr) 78px 64px; gap: 6px; }
+  .agenda-stack-fullscreen .stack-view-toolbar .stack-scale-toggle { width: 78px; min-width: 78px; flex-basis: 78px; }
+  .agenda-stack-fullscreen .stack-view-toolbar > button { padding: 8px; font-size: 11px; min-height: 44px; }
+  .agenda-stack-fullscreen .stack-scale-long, .agenda-stack-fullscreen .stack-exit-long { display: none; }
+  .agenda-stack-fullscreen .stack-scale-short, .agenda-stack-fullscreen .stack-exit-short { display: inline; }
+}

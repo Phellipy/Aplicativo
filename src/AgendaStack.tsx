@@ -5,7 +5,13 @@ import {
   type PointerEvent,
   type ReactNode,
 } from "react";
-import { GripVertical, CalendarClock } from "lucide-react";
+import { createPortal } from "react-dom";
+import {
+  GripVertical,
+  CalendarClock,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import {
   appointmentDuration,
   getAvailableTimes,
@@ -57,6 +63,10 @@ export default function AgendaStack({
   renderDetails,
   renderReminder,
 }: Props) {
+  const [fullscreen, setFullscreen] = useState(false);
+  const [fitScreen, setFitScreen] = useState(true);
+  const [boardHeight, setBoardHeight] = useState(600);
+  const fullscreenButton = useRef<HTMLButtonElement>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const active = useRef<Drag | null>(null);
   const pending = useRef<{
@@ -69,6 +79,59 @@ export default function AgendaStack({
   const root = useRef<HTMLDivElement>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
   const detailsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!fullscreen) return;
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    fullscreenButton.current?.focus();
+    const keyboard = (event: KeyboardEvent) => {
+      // Native payment/rescheduling dialogs keep their own Escape and focus.
+      if (document.querySelector("dialog[open]")) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setFullscreen(false);
+      }
+      if (event.key === "Tab") {
+        const elements = root.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), summary, [tabindex="0"]',
+        );
+        const visible = elements
+          ? Array.from(elements).filter((e) => e.getClientRects().length)
+          : [];
+        const first = visible[0],
+          last = visible.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", keyboard);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      document.removeEventListener("keydown", keyboard);
+      // The normal view is remounted when leaving the portal.
+      requestAnimationFrame(() => fullscreenButton.current?.focus());
+    };
+  }, [fullscreen]);
+  useEffect(() => {
+    if (!fullscreen || !scrollArea.current) return;
+    const area = scrollArea.current;
+    const measure = () => {
+      const header = area.querySelector<HTMLElement>(".timeline-header");
+      setBoardHeight(
+        Math.max(120, area.clientHeight - (header?.offsetHeight ?? 44) - 2),
+      );
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(area);
+    measure();
+    return () => observer.disconnect();
+  }, [fullscreen, expanded]);
+
   useEffect(() => {
     if (expanded !== null)
       detailsRef.current?.scrollIntoView({
@@ -215,12 +278,24 @@ export default function AgendaStack({
     );
   const first =
     Math.floor(
-      Math.min(480, ...workTimes, ...layout.map((p) => p.start)) / 60,
+      Math.min(
+        ...(fullscreen && (workTimes.length || layout.length) ? [] : [480]),
+        ...workTimes,
+        ...layout.map((p) => p.start),
+      ) / 60,
     ) * 60;
   const last =
-    Math.ceil(Math.max(1200, ...workTimes, ...layout.map((p) => p.end)) / 60) *
-    60;
-  const scale = 2;
+    Math.ceil(
+      Math.max(
+        ...(fullscreen && (workTimes.length || layout.length) ? [] : [1200]),
+        ...workTimes,
+        ...layout.map((p) => p.end),
+      ) / 60,
+    ) * 60;
+  const scale =
+    fullscreen && fitScreen
+      ? Math.min(2, boardHeight / Math.max(60, last - first))
+      : 2;
   const height = (last - first) * scale;
   const selected = appointments.find((a) => a.id === expanded);
   const available = drag
@@ -242,8 +317,51 @@ export default function AgendaStack({
     gridTemplateColumns: `52px repeat(${laneNames.length},minmax(220px,1fr))`,
     minWidth: 52 + 220 * laneNames.length,
   };
-  return (
-    <div className={`agenda-stack ${drag ? "is-dragging" : ""}`} ref={root}>
+  const content = (
+    <div
+      className={`agenda-stack ${drag ? "is-dragging" : ""} ${fullscreen ? "agenda-stack-fullscreen" : ""}`}
+      ref={root}
+      role={fullscreen ? "dialog" : undefined}
+      aria-modal={fullscreen ? true : undefined}
+      aria-label={fullscreen ? "Agenda em tela cheia" : undefined}
+    >
+      <div className="stack-view-toolbar">
+        {fullscreen && (
+          <strong>Agenda · {date.split("-").reverse().join("/")}</strong>
+        )}
+        {fullscreen && (
+          <button
+            className="secondary stack-scale-toggle"
+            aria-label={fitScreen ? "Ampliar horários" : "Ajustar à tela"}
+            aria-pressed={fitScreen}
+            onClick={() => setFitScreen(!fitScreen)}
+            title={fitScreen ? "Ampliar horários" : "Ajustar à tela"}
+          >
+            <span className="stack-scale-long">
+              {fitScreen ? "Ampliar horários" : "Ajustar à tela"}
+            </span>
+            <span className="stack-scale-short">
+              {fitScreen ? "Ampliar" : "Ajustar"}
+            </span>
+          </button>
+        )}
+        <button
+          ref={fullscreenButton}
+          className="secondary"
+          aria-label={fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          onClick={() => {
+            reset();
+            onExpand(null);
+            setFullscreen(!fullscreen);
+          }}
+        >
+          {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          <span className={fullscreen ? "stack-exit-long" : undefined}>
+            {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+          </span>
+          {fullscreen && <span className="stack-exit-short">Sair</span>}
+        </button>
+      </div>
       <p className="drag-instructions">
         A altura representa a duração total. Arraste pela alça ⋮⋮ (segure no
         celular), ou selecione a caixa para reagendar. Encaixe de 15 minutos.
@@ -262,6 +380,7 @@ export default function AgendaStack({
         </div>
         <div className="timeline-board" style={{ ...laneStyle, height }}>
           <div className="timeline-axis">
+            <time className="timeline-end-time">{minuteTime(last)}</time>
             {ticks
               .filter((minute) => minute % 60 === 0)
               .map((minute) => (
@@ -273,6 +392,11 @@ export default function AgendaStack({
           {laneNames.map((name) => (
             <div
               className="timeline-lane"
+              style={{
+                backgroundSize: `100% ${15 * scale}px`,
+                backgroundImage:
+                  "linear-gradient(to bottom, var(--border) 1px, transparent 1px)",
+              }}
               key={name}
               aria-label={`Horários de ${name}`}
             >
@@ -326,7 +450,7 @@ export default function AgendaStack({
                   return (
                     <div
                       key={a.id}
-                      className={`timeline-event stack-tone-${agendaStatusTone(a.status)} ${drag?.appointment.id === a.id ? "timeline-source-dragging" : ""} ${item.end - item.start <= 30 ? "timeline-compact" : ""} ${item.end - item.start < 30 ? "timeline-short" : ""}`}
+                      className={`timeline-event stack-tone-${agendaStatusTone(a.status)} ${drag?.appointment.id === a.id ? "timeline-source-dragging" : ""} ${item.end - item.start <= 30 ? "timeline-compact" : ""} ${item.end - item.start < 30 ? "timeline-short" : ""} ${fullscreen && (item.end - item.start) * scale < 44 ? "timeline-fit-small" : ""}`}
                       style={{
                         top: (item.start - first) * scale,
                         height: (item.end - item.start) * scale,
@@ -448,4 +572,5 @@ export default function AgendaStack({
       )}
     </div>
   );
+  return fullscreen ? createPortal(content, document.body) : content;
 }

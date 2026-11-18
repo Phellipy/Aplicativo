@@ -15,12 +15,17 @@ import {
   type DocumentMap,
   type CloudKind,
 } from "./cloudModel";
+import { initialCloudKeys } from "./cloudLoading";
 export class CloudStore {
   values = new Map<string, unknown>();
   private server = new Map<string, DocumentMap>();
   private staged = new Map<string, { value: unknown; base: DocumentMap }>();
   private listeners = new Set<() => void>();
   private stops: Unsubscribe[] = [];
+  private requested = new Set<string>();
+  private loadErrors = new Map<string, string>();
+  private onReady = () => {};
+  private onLoadError = (_message: string) => {};
   private inFlight = new Set<string>();
   private running = false;
   private scheduled = false;
@@ -40,9 +45,23 @@ export class CloudStore {
     this.listeners.forEach((listener) => listener());
     this.onStatus();
   }
+  isLoaded(keys: string[]) {
+    return keys.every((key) => this.server.has(key));
+  }
+  loadError(keys: string[]) {
+    return keys.map((key) => this.loadErrors.get(key)).find(Boolean) ?? "";
+  }
   start(onReady: () => void, onError: (error: string) => void) {
-    const waiting = new Set(Object.keys(cloudKeys));
-    for (const [key, kind] of Object.entries(cloudKeys)) {
+    this.onReady = onReady;
+    this.onLoadError = onError;
+    this.ensure(initialCloudKeys);
+  }
+  ensure(keys: string[]) {
+    for (const key of new Set(keys)) {
+      if (!cloudKeys[key]) throw new Error("Coleção não autorizada.");
+      if (this.requested.has(key)) continue;
+      this.requested.add(key);
+      const kind = cloudKeys[key];
       this.stops.push(
         onSnapshot(
           collection(this.db, "instances", instance.id, "data", key, "items"),
@@ -58,22 +77,28 @@ export class CloudStore {
               ]),
             );
             this.server.set(key, entries);
+            this.loadErrors.delete(key);
             if (!this.staged.has(key) && !this.inFlight.has(key))
               this.values.set(key, materialize(kind, entries));
-            waiting.delete(key);
             this.emit();
-            if (waiting.size === 0) onReady();
+            if (this.isLoaded(initialCloudKeys)) this.onReady();
           },
-          () =>
-            onError(
-              "Não foi possível carregar os dados. Confira a conexão e o acesso ao banco.",
-            ),
+          () => {
+            const message =
+              "Não foi possível carregar os dados. Confira a conexão e o acesso ao banco.";
+            this.loadErrors.set(key, message);
+            this.emit();
+            if (initialCloudKeys.includes(key)) this.onLoadError(message);
+          },
         ),
       );
     }
   }
   stop() {
     this.stops.forEach((stop) => stop());
+    this.stops = [];
+    this.requested.clear();
+    this.loadErrors.clear();
     this.listeners.clear();
     this.values.clear();
     this.server.clear();
@@ -95,6 +120,11 @@ export class CloudStore {
   }
   change(key: string, value: unknown) {
     if (!cloudKeys[key]) throw new Error("Coleção não autorizada.");
+    if (this.loadErrors.has(key)) throw new Error(this.loadErrors.get(key));
+    if (!this.server.has(key))
+      throw new Error(
+        "Aguarde o carregamento dos dados antes de alterar este módulo.",
+      );
     const current = this.values.get(key);
     if (JSON.stringify(current) === JSON.stringify(value)) return;
     const base =
